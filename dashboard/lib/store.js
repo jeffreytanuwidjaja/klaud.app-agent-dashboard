@@ -42,6 +42,7 @@ function toDTO(e) {
   return {
     id: e.id,
     type: e.type,
+    file: e.file, // absolute path — local app, used for obsidian:// links
     title: d.title || e.id,
     status: d.status || null,
     created: d.created || null,
@@ -69,6 +70,7 @@ function snapshot() {
     projects: readFolder('project').map(toDTO),
     tasks: readFolder('task').map(toDTO),
     sessions,
+    store_path: STORE, // for "Open in Obsidian" (vault = the Store folder)
     generated_at: new Date().toISOString(),
   };
 }

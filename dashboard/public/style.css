@@ -139,6 +139,8 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 .actions .dismiss:hover { color: var(--danger); border-color: rgba(242,104,94,0.5); }
 .actions .spawn:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
 .actions .discuss:hover { color: var(--blue); border-color: rgba(106,166,255,0.5); }
+.actions .obsi { margin-left: auto; padding: 7px 9px; }
+.actions .obsi:hover { color: #a88bfa; border-color: rgba(168,139,250,0.5); }
 .actions button:disabled { opacity: 0.5; cursor: default; }
 .empty { color: var(--faint); font-size: 13px; font-style: italic; padding: 10px 2px; }
 

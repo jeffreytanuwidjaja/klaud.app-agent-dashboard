@@ -22,6 +22,7 @@ Chat assistants forget. Notes apps don't think. Klaud splits the difference:
 - 🔎 **Cross-workspace context** — register your other repos/vaults as Workspaces; the brain reads across all of them
 - 🖼 **Image paste** — paste screenshots into chat; the brain views them
 - 🕘 **Full history** — past chats are browsable and resumable; finished tasks and retired ideas live in the Archive, never deleted
+- 💎 **Obsidian built in** — the Store is a valid Obsidian vault: one click opens it (or any single idea/task/project) in Obsidian for graph view and rich editing
 - 📴 **Local & offline-first** — no hosted backend, no telemetry, self-hosted fonts; your data never leaves your machine
 
 ## Architecture
@@ -78,6 +79,17 @@ store/
 ```
 
 Your Store is **yours**: this repo ships the app, not your data (`store/` contents are gitignored).
+
+## Obsidian
+
+The Store follows Obsidian conventions by design (ADR 0002): YAML frontmatter, `[[wikilinks]]`, one note per entity — so it *is* a vault, no export or sync needed.
+
+- **Open in Obsidian** (sidebar) opens the whole Store as a vault — instant graph view of how your ideas, projects, and tasks connect
+- The 💎 button on any card jumps straight to that entity's markdown file in Obsidian
+- Edits made in Obsidian appear on the dashboard within seconds (it re-reads the files), and the AI brains see them immediately
+- Nothing *depends* on Obsidian — it's a free power-up, not a requirement; `.obsidian/` state stays gitignored
+
+Tip: open `store/` (not the repo root) as the vault so your graph shows only your knowledge, not the app's code.
 
 ## Security notes
 

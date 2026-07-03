@@ -14,6 +14,7 @@ const PATHS = {
   bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.2 1 2h6c0-.8.3-1.4 1-2A6 6 0 0 0 12 3Z"/>',
   folder: '<path d="M3 7.5A2 2 0 0 1 5 5.5h3.5l2 2H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12Z"/>',
+  gem: '<path d="M13.5 2.5 19 7l1.5 9.5L14 21.5l-6.5-2L4 12l3.5-7.5Z"/><path d="M13.5 2.5 11 12l3 9.5" opacity="0.55"/>',
 };
 const ic = (n) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[n]}</svg>`;
 
@@ -53,6 +54,8 @@ const firstLine = (body, skipH) => (body || '').split('\n').find((l) => l.trim()
 
 const discussBtn = (type, id, title) =>
   `<button class="discuss" data-action="discuss" data-type="${type}" data-id="${esc(id)}" data-title="${esc(title)}" aria-label="Discuss '${esc(title)}' with Jarvis">${ic('chat')}<span>Discuss</span></button>`;
+const obsidianBtn = (file, title) =>
+  file ? `<button class="obsi" data-action="obsidian" data-file="${esc(file)}" aria-label="Open '${esc(title)}' in Obsidian" title="Open in Obsidian">${ic('gem')}</button>` : '';
 
 function taskCard(t, archived) {
   const c = el('div', 'card');
@@ -60,11 +63,11 @@ function taskCard(t, archived) {
   if (t.remind_at) { const r = relTime(t.remind_at); remind = `<span class="pill remind ${r.overdue ? 'overdue' : ''}">${ic('clock')}${esc(r.text)}</span>`; }
   const statusPill = archived ? `<span class="pill status ${esc(t.status)}">${esc(t.status)}</span>` : '';
   const acts = archived
-    ? `<button class="done" data-id="${esc(t.id)}" data-status="open" aria-label="Reopen '${esc(t.title)}'">${ic('check')}<span>Reopen</span></button>${discussBtn('task', t.id, t.title)}`
+    ? `<button class="done" data-id="${esc(t.id)}" data-status="open" aria-label="Reopen '${esc(t.title)}'">${ic('check')}<span>Reopen</span></button>${discussBtn('task', t.id, t.title)}${obsidianBtn(t.file, t.title)}`
     : `<button class="done" data-id="${esc(t.id)}" data-status="done" aria-label="Mark '${esc(t.title)}' done">${ic('check')}<span>Done</span></button>` +
       `<button class="dismiss" data-id="${esc(t.id)}" data-status="dismissed" aria-label="Dismiss '${esc(t.title)}'">${ic('x')}<span>Dismiss</span></button>` +
       `<button class="spawn" data-action="spawn" data-source="task" data-id="${esc(t.id)}" data-title="${esc(t.title)}" aria-label="Turn '${esc(t.title)}' into a project">${ic('spark')}<span>Project</span></button>` +
-      discussBtn('task', t.id, t.title);
+      discussBtn('task', t.id, t.title) + obsidianBtn(t.file, t.title);
   c.innerHTML = `<div class="title">${esc(t.title)}</div><div class="meta">${statusPill}${remind}${linkPills(t.links)}${tagPills(t.tags)}</div><div class="actions">${acts}</div>`;
   return c;
 }
@@ -72,15 +75,16 @@ function projectCard(p) {
   const c = el('div', 'card'); const line = firstLine(p.body, true);
   c.innerHTML = `<div class="title">${esc(p.title)}</div>` + (line ? `<div class="excerpt">${esc(line.slice(0, 150))}</div>` : '') +
     `<div class="meta"><span class="pill status ${esc(p.status)}">${esc(p.status || 'project')}</span>${linkPills({ from_ideas: p.links.from_ideas, related: p.links.related })}</div>` +
-    `<div class="actions">${discussBtn('project', p.id, p.title)}</div>`;
+    `<div class="actions">${discussBtn('project', p.id, p.title)}${obsidianBtn(p.file, p.title)}</div>`;
   return c;
 }
 function ideaCard(i, archived) {
   const c = el('div', 'card'); const line = firstLine(i.body, false);
   const acts = archived
-    ? `<button class="done" data-action="archive" data-id="${esc(i.id)}" data-archived="false" aria-label="Restore '${esc(i.title)}'">${ic('check')}<span>Restore</span></button>${discussBtn('idea', i.id, i.title)}`
+    ? `<button class="done" data-action="archive" data-id="${esc(i.id)}" data-archived="false" aria-label="Restore '${esc(i.title)}'">${ic('check')}<span>Restore</span></button>${discussBtn('idea', i.id, i.title)}${obsidianBtn(i.file, i.title)}`
     : `<button class="spawn" data-action="spawn" data-source="idea" data-id="${esc(i.id)}" data-title="${esc(i.title)}" aria-label="Spawn a project from '${esc(i.title)}'">${ic('spark')}<span>Project</span></button>` +
       discussBtn('idea', i.id, i.title) +
+      obsidianBtn(i.file, i.title) +
       `<button class="dismiss" data-action="archive" data-id="${esc(i.id)}" data-archived="true" aria-label="Archive '${esc(i.title)}'">${ic('x')}<span>Archive</span></button>`;
   c.innerHTML = `<div class="title">${esc(i.title)}</div>` + (line ? `<div class="excerpt">${esc(line.slice(0, 150))}</div>` : '') +
     `<div class="meta">${linkPills({ spawned: i.links.spawned, related: i.links.related })}${tagPills(i.tags)}</div><div class="actions">${acts}</div>`;
@@ -143,6 +147,17 @@ document.addEventListener('click', async (e) => {
   try { await fetch(`/api/ideas/${encodeURIComponent(btn.dataset.id)}/archive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: btn.dataset.archived === 'true' }) }); }
   finally { refresh(); }
 });
+
+// open in Obsidian (obsidian:// URI protocol; Obsidian must be installed)
+function openObsidian(pathStr) {
+  if (!pathStr) return;
+  window.location.href = 'obsidian://open?path=' + encodeURIComponent(pathStr);
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action="obsidian"]'); if (!btn) return;
+  openObsidian(btn.dataset.file);
+});
+$('#open-obsidian').addEventListener('click', () => openObsidian(lastData && lastData.store_path));
 
 // discuss an entity with Jarvis (fresh session, seeded with the file to read)
 const STORE_DIRS = { idea: 'ideas', project: 'projects', task: 'tasks' };

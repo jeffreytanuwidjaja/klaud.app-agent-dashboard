@@ -18,6 +18,10 @@ dashboard/notified.json
 node_modules/
 npm-debug.log*
 
+# --- obsidian per-vault state (created when you open the Store as a vault) ---
+.obsidian/
+store/.obsidian/
+
 # --- misc ---
 .DS_Store
 Thumbs.db
