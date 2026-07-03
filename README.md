@@ -1,8 +1,8 @@
 # Klaud — Agent OS Dashboard
 
-**A personal Jarvis: one dashboard for your ideas, projects, tasks, and reminders — with a real AI brain that remembers across every session.**
+**A personal Jarvis: one dashboard for your ideas, projects, tasks, and reminders — with a real AI brain that remembers across every session. Bring your own model: Claude, ChatGPT, or Gemini.**
 
-Klaud is a local-first command center built on [Claude Code](https://claude.com/claude-code). Talk to it in one session, and every other session knows what happened — because all context lives in a shared, human-readable markdown **Store**, not inside any single conversation.
+Klaud is a local-first command center built on [Claude Code](https://claude.com/claude-code), with pluggable support for OpenAI's Codex CLI and Google's Gemini CLI. Talk to it in one session, and every other session knows what happened — because all context lives in a shared, human-readable markdown **Store**, not inside any single conversation or any single model. Start a project with Claude, continue it with ChatGPT: the markdown remembers.
 
 ## Why
 
@@ -16,6 +16,7 @@ Chat assistants forget. Notes apps don't think. Klaud splits the difference:
 
 - 🗂 **One board** — Tasks, Projects, and Ideas in a single dark command-center view, with quick capture
 - 💬 **Jarvis chat dock** — talk to a headless Claude Code session that reads/writes your Store live; streamed replies, tool activity chips, resumable threads
+- 🧠 **Multi-LLM brains** — pick the model per conversation: Claude (first-class), ChatGPT via Codex CLI, or Gemini CLI; all follow the same Store protocol (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), so memory survives a brain swap
 - ⏰ **Reminders** — a task with a `remind_at` fires a native Windows toast; the dashboard server is the always-on scheduler
 - 🌱 **Ideas spawn Projects** — one click turns an idea into a linked project (idea stays put — provenance is permanent) and drops you into an AI planning chat
 - 🔎 **Cross-workspace context** — register your other repos/vaults as Workspaces; the brain reads across all of them
@@ -32,14 +33,15 @@ Chat assistants forget. Notes apps don't think. Klaud splits the difference:
 └─────┬──────┘                      └──────────────────┘
       │ spawns per message                    ▲
       ▼                                       │ reads/writes
-┌─────────────────────────┐                   │
-│  Claude Code (headless) │ ◄─────────────────┘
-│  -p --output-format     │   ...and any terminal
-│     stream-json         │   Claude Code session
-└─────────────────────────┘
+┌─────────────────────────────────┐           │
+│ Brain (pick one per chat):      │ ◄─────────┘
+│  · claude -p --stream-json      │   ...and any terminal
+│  · codex exec  (ChatGPT)        │   agent session
+│  · gemini      (Google)         │
+└─────────────────────────────────┘
 ```
 
-The chat panel drives `claude -p --output-format stream-json` with a narrow tool allowlist (read/write the Store, nothing else). Each thread is a fresh session that orients from the Store — the "Jarvis illusion" never degrades from context-window exhaustion. Design rationale lives in [docs/adr/](docs/adr/), the domain glossary in [CONTEXT.md](CONTEXT.md).
+**The Store is the contract, not the model** (ADR 0004): any agent CLI that can read/write files qualifies as a Brain. Claude is first-class — structured stream, tool chips, resumable threads, and a narrow tool allowlist (read/write the Store, nothing else). Codex and Gemini run in text mode (prompt via stdin, output streamed back), stateless per message — which is fine, because continuity lives in the Store, not the conversation. The "Jarvis illusion" never degrades from context-window exhaustion. Design rationale lives in [docs/adr/](docs/adr/), the domain glossary in [CONTEXT.md](CONTEXT.md).
 
 ## Getting started
 
@@ -58,6 +60,13 @@ npm start                 # → http://localhost:4317
 
 Open the dashboard, add a task, then ask Jarvis *"what's on my plate?"*
 
+**Optional — extra brains** (they appear in the chat dropdown automatically once on PATH):
+
+```bash
+npm install -g @openai/codex        # ChatGPT — then run `codex` once to log in
+npm install -g @google/gemini-cli   # Gemini  — then run `gemini` once to log in
+```
+
 ## The Store
 
 ```
@@ -74,7 +83,7 @@ Your Store is **yours**: this repo ships the app, not your data (`store/` conten
 
 - `dashboard/.claude-token` holds a live credential — it is gitignored; never commit it
 - The dashboard binds locally with no auth (by design — see ADR 0001); don't expose the port
-- The headless brain runs with a pre-approved tool allowlist scoped to this repo + your registered Workspaces
+- The Claude brain runs with a pre-approved tool allowlist scoped to this repo + your registered Workspaces; Codex runs in its own `--full-auto` workspace sandbox, Gemini in `--yolo` — different vendors, different sandboxes, so review their docs before enabling them
 
 ## Roadmap
 
