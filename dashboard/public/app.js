@@ -241,6 +241,9 @@ async function openThread(id) {
   let thread; try { thread = await (await fetch('/api/chats/' + encodeURIComponent(id))).json(); } catch { return; }
   if (!thread || !thread.messages) return;
   chatSession = id;
+  const prefix = String(id).split('-')[0];
+  chatProvider = ['codex', 'gemini'].includes(prefix) ? prefix : 'claude';
+  if (providerSel.querySelector(`option[value="${chatProvider}"]`)) providerSel.value = chatProvider;
   $('#chat-sub').textContent = 'resumed conversation';
   chatLog.innerHTML = '';
   thread.messages.forEach((m) => {
@@ -256,6 +259,30 @@ async function openThread(id) {
 // ---- chat ---------------------------------------------------------------
 const chatLog = $('#chat-log'), chatInput = $('#chat-input'), chatSend = $('#chat-send');
 let chatSession = null, chatBusy = false;
+let chatProvider = 'claude';
+
+// brain selector
+const providerSel = $('#chat-provider');
+async function loadProviders() {
+  let list = [];
+  try { list = await (await fetch('/api/providers')).json(); } catch { return; }
+  providerSel.innerHTML = '';
+  list.forEach((p) => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.available ? p.label : `${p.label} — not installed`;
+    o.disabled = !p.available;
+    providerSel.appendChild(o);
+  });
+  const firstOk = list.find((p) => p.available);
+  chatProvider = (list.find((p) => p.id === 'claude' && p.available) || firstOk || { id: 'claude' }).id;
+  providerSel.value = chatProvider;
+}
+providerSel.addEventListener('change', () => {
+  chatProvider = providerSel.value;
+  $('#chat-new').click(); // session semantics differ per brain — start fresh
+  $('#chat-sub').textContent = `brain: ${providerSel.selectedOptions[0].textContent}`;
+});
 let attachments = []; // {path, dataUrl}
 const scrollChat = () => { chatLog.scrollTop = chatLog.scrollHeight; };
 
@@ -314,7 +341,7 @@ async function sendChat(text) {
   const finishErr = (msg) => { bot.wrap.classList.add('error'); bot.bubble.textContent = msg; };
 
   try {
-    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments }) });
+    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments, provider: chatProvider }) });
     if (!resp.ok || !resp.body) throw new Error('server');
     const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
     while (true) {
@@ -325,6 +352,7 @@ async function sendChat(text) {
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.type === 'session') { chatSession = ev.id; $('#chat-sub').textContent = 'active conversation'; }
         else if (ev.type === 'text') { acc += ev.value; bot.bubble.innerHTML = `${esc(acc)}<span class="caret"></span>`; scrollChat(); }
+        else if (ev.type === 'final') { acc = ev.value; bot.bubble.innerHTML = `${esc(acc)}<span class="caret"></span>`; scrollChat(); }
         else if (ev.type === 'tool') { if (!seen.has(ev.name)) { seen.add(ev.name); bot.tools.insertAdjacentHTML('beforeend', toolChip(ev.name)); } }
         else if (ev.type === 'error') {
           if (ev.error === 'not_logged_in') finishErr('The brain isn’t authenticated. Run  claude setup-token  and put the token in dashboard/.claude-token, then try again.');
@@ -357,6 +385,7 @@ function openChatMobile() { if (window.innerWidth <= 1200) $('.chat').classList.
 function tickClock() { $('#clock').textContent = fmtClock(); }
 tickClock(); setInterval(tickClock, 1000);
 setMode('task');
+loadProviders();
 showView(location.hash.slice(1) || 'overview');
 refresh(); setInterval(refresh, 15000);
 // keep the sidebar workspace count fresh on load

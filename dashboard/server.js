@@ -8,6 +8,7 @@ const scheduler = require('./lib/scheduler');
 const chat = require('./lib/chat');
 const config = require('./lib/config');
 const history = require('./lib/history');
+const providers = require('./lib/providers');
 
 const app = express();
 app.use(express.json({ limit: '25mb' })); // room for pasted images (base64)
@@ -36,8 +37,11 @@ app.post('/api/chat', (req, res) => {
   const sessionId = req.body && req.body.sessionId ? String(req.body.sessionId) : null;
   const attachments = (req.body && req.body.attachments) || [];
   if (!message.trim() && !attachments.length) return res.status(400).json({ error: 'Empty message' });
-  chat.runChat(message, sessionId, attachments, res);
+  chat.runChat(message, sessionId, attachments, res, (req.body && req.body.provider) || 'claude');
 });
+
+// Available brains (Claude, ChatGPT/Codex, Gemini, …).
+app.get('/api/providers', wrap(() => providers.list()));
 
 // Spawn a Project from an Idea or Task (spawn + link, never transform).
 app.post('/api/projects/spawn', wrap((req) => store.spawnProject(req.body || {})));

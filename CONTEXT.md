@@ -12,7 +12,7 @@ The single always-on visual surface showing everything — ideas, projects, task
 _Avoid_: app, UI, frontend
 
 **Brain**:
-Any Claude Code session acting on the user's behalf, whether started from a terminal or the Dashboard's chat. Sessions are ephemeral; continuity lives in the Store, never in the conversation.
+Any AI agent session acting on the user's behalf that follows the Store protocol — Claude Code first-class, but any agent CLI able to read/write files (Codex, Gemini, …) qualifies. Sessions are ephemeral; continuity lives in the Store, never in the conversation or in any one model.
 _Avoid_: assistant, bot, AI (as a noun)
 
 **Store**:

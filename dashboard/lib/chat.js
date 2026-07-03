@@ -9,6 +9,7 @@ const fs = require('fs');
 const config = require('./config');
 const store = require('./store');
 const history = require('./history');
+const providers = require('./providers');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -103,7 +104,84 @@ function handleLine(line, send, acc) {
   }
 }
 
-function runChat(message, sessionId, attachments, res) {
+// Strip ANSI escape sequences (colors, cursor moves) from CLI output.
+const stripAnsi = (s) => s.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+
+// Generic text-mode brain (Codex, Gemini, …): prompt in via stdin, stdout
+// streamed back as text. Stateless per message — the Store carries continuity
+// (their protocol files: AGENTS.md / GEMINI.md). sessionId is only a history key.
+function runTextChat(provider, message, prompt, sessionId, res, send) {
+  const id = sessionId || `${provider.id}-${Date.now()}`;
+  send({ type: 'session', id, resumable: false });
+
+  // If the CLI can write its clean final answer to a file, use it — the live
+  // stdout stream becomes progress, replaced by the final message at the end.
+  let lastFile = null;
+  const args = [...(provider.args || [])];
+  if (provider.lastMessageFlag) {
+    lastFile = path.join(require('os').tmpdir(), `agentos-${provider.id}-${Date.now()}.txt`);
+    args.splice(args.length - 1, 0, provider.lastMessageFlag, lastFile);
+  }
+
+  let child;
+  try {
+    child = spawn(provider.bin, args, { cwd: ROOT, windowsHide: true, shell: true });
+  } catch (e) {
+    send({ type: 'error', error: 'spawn_failed', message: e.message });
+    return res.end();
+  }
+  try {
+    child.stdin.write(prompt);
+    child.stdin.end();
+  } catch {
+    /* handled below */
+  }
+
+  let out = '';
+  child.stdout.on('data', (d) => {
+    const s = stripAnsi(d.toString());
+    out += s;
+    send({ type: 'text', value: s });
+  });
+  child.stderr.on('data', (d) => console.error(`[chat:${provider.id}] stderr:`, d.toString().slice(0, 300)));
+  child.on('error', (e) => {
+    send({ type: 'error', error: 'spawn_error', message: `${provider.label} failed to start (${e.message}). Install it: ${provider.install}` });
+    res.end();
+  });
+  child.on('close', (code) => {
+    let finalText = out.trim();
+    if (lastFile) {
+      try {
+        const last = fs.readFileSync(lastFile, 'utf8').trim();
+        if (last) {
+          finalText = last;
+          send({ type: 'final', value: last }); // replaces the progress stream
+        }
+      } catch { /* fall back to raw stream */ }
+      try { fs.unlinkSync(lastFile); } catch { /* noop */ }
+    }
+    if (!finalText && code !== 0) {
+      send({ type: 'error', error: 'provider_error', message: `${provider.label} exited with code ${code}. Is it installed and logged in? (${provider.install})` });
+    }
+    try {
+      history.append(id, message, finalText, [provider.label]);
+    } catch {
+      /* best-effort */
+    }
+    send({ type: 'end' });
+    res.end();
+  });
+
+  const killer = setTimeout(() => {
+    try { child.kill(); } catch { /* noop */ }
+  }, 180000);
+  res.on('close', () => {
+    clearTimeout(killer);
+    try { child.kill(); } catch { /* noop */ }
+  });
+}
+
+function runChat(message, sessionId, attachments, res, providerId) {
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -127,6 +205,9 @@ function runChat(message, sessionId, attachments, res) {
       files.map((f) => '- ' + f).join('\n') +
       ']';
   }
+
+  const provider = providers.get(providerId);
+  if (provider.mode === 'text') return runTextChat(provider, message, prompt, sessionId, res, send);
 
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits'];
   if (sessionId) args.push('--resume', sessionId);
