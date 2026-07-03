@@ -1,0 +1,363 @@
+// Agent OS Dashboard — sidebar app shell over the Store + Jarvis chat.
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---- icons --------------------------------------------------------------
+const PATHS = {
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/>',
+  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+  bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.2 1 2h6c0-.8.3-1.4 1-2A6 6 0 0 0 12 3Z"/>',
+  folder: '<path d="M3 7.5A2 2 0 0 1 5 5.5h3.5l2 2H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12Z"/>',
+};
+const ic = (n) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[n]}</svg>`;
+
+// ---- time ---------------------------------------------------------------
+const fmtClock = () => new Date().toLocaleString(undefined, { hour: '2-digit', minute: '2-digit' });
+function relTime(iso) {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return { text: iso, overdue: false };
+  const diff = t - Date.now(), overdue = diff < 0, mins = Math.round(Math.abs(diff) / 60000);
+  let text = mins < 1 ? 'now' : mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
+  return { text: overdue ? `${text} overdue` : `in ${text}`, overdue };
+}
+const fmtDate = (ms) => new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+// ---- view routing -------------------------------------------------------
+function showView(name) {
+  const valid = ['overview', 'workspaces', 'history', 'archive'];
+  if (!valid.includes(name)) name = 'overview';
+  $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${name}`));
+  $$('.nav-item').forEach((n) => n.classList.toggle('active', n.dataset.view === name));
+  if (name === 'workspaces') loadWorkspaces();
+  if (name === 'history') loadHistory();
+  if (name === 'archive') renderArchive();
+}
+$$('.nav-item').forEach((n) => n.addEventListener('click', () => { location.hash = n.dataset.view; }));
+window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+
+// ---- board rendering ----------------------------------------------------
+function linkPills(links) {
+  const out = [];
+  const add = (arr, name) => (arr || []).forEach((s) => out.push(`<span class="pill link">${ic(name)}${esc(s)}</span>`));
+  add(links.project, 'link'); add(links.from_ideas, 'bulb'); add(links.spawned, 'spark'); add(links.related, 'link');
+  return out.join('');
+}
+const tagPills = (tags) => (tags || []).map((t) => `<span class="pill tag">#${esc(t)}</span>`).join('');
+const firstLine = (body, skipH) => (body || '').split('\n').find((l) => l.trim() && (!skipH || !l.startsWith('#'))) || '';
+
+const discussBtn = (type, id, title) =>
+  `<button class="discuss" data-action="discuss" data-type="${type}" data-id="${esc(id)}" data-title="${esc(title)}" aria-label="Discuss '${esc(title)}' with Jarvis">${ic('chat')}<span>Discuss</span></button>`;
+
+function taskCard(t, archived) {
+  const c = el('div', 'card');
+  let remind = '';
+  if (t.remind_at) { const r = relTime(t.remind_at); remind = `<span class="pill remind ${r.overdue ? 'overdue' : ''}">${ic('clock')}${esc(r.text)}</span>`; }
+  const statusPill = archived ? `<span class="pill status ${esc(t.status)}">${esc(t.status)}</span>` : '';
+  const acts = archived
+    ? `<button class="done" data-id="${esc(t.id)}" data-status="open" aria-label="Reopen '${esc(t.title)}'">${ic('check')}<span>Reopen</span></button>${discussBtn('task', t.id, t.title)}`
+    : `<button class="done" data-id="${esc(t.id)}" data-status="done" aria-label="Mark '${esc(t.title)}' done">${ic('check')}<span>Done</span></button>` +
+      `<button class="dismiss" data-id="${esc(t.id)}" data-status="dismissed" aria-label="Dismiss '${esc(t.title)}'">${ic('x')}<span>Dismiss</span></button>` +
+      `<button class="spawn" data-action="spawn" data-source="task" data-id="${esc(t.id)}" data-title="${esc(t.title)}" aria-label="Turn '${esc(t.title)}' into a project">${ic('spark')}<span>Project</span></button>` +
+      discussBtn('task', t.id, t.title);
+  c.innerHTML = `<div class="title">${esc(t.title)}</div><div class="meta">${statusPill}${remind}${linkPills(t.links)}${tagPills(t.tags)}</div><div class="actions">${acts}</div>`;
+  return c;
+}
+function projectCard(p) {
+  const c = el('div', 'card'); const line = firstLine(p.body, true);
+  c.innerHTML = `<div class="title">${esc(p.title)}</div>` + (line ? `<div class="excerpt">${esc(line.slice(0, 150))}</div>` : '') +
+    `<div class="meta"><span class="pill status ${esc(p.status)}">${esc(p.status || 'project')}</span>${linkPills({ from_ideas: p.links.from_ideas, related: p.links.related })}</div>` +
+    `<div class="actions">${discussBtn('project', p.id, p.title)}</div>`;
+  return c;
+}
+function ideaCard(i, archived) {
+  const c = el('div', 'card'); const line = firstLine(i.body, false);
+  const acts = archived
+    ? `<button class="done" data-action="archive" data-id="${esc(i.id)}" data-archived="false" aria-label="Restore '${esc(i.title)}'">${ic('check')}<span>Restore</span></button>${discussBtn('idea', i.id, i.title)}`
+    : `<button class="spawn" data-action="spawn" data-source="idea" data-id="${esc(i.id)}" data-title="${esc(i.title)}" aria-label="Spawn a project from '${esc(i.title)}'">${ic('spark')}<span>Project</span></button>` +
+      discussBtn('idea', i.id, i.title) +
+      `<button class="dismiss" data-action="archive" data-id="${esc(i.id)}" data-archived="true" aria-label="Archive '${esc(i.title)}'">${ic('x')}<span>Archive</span></button>`;
+  c.innerHTML = `<div class="title">${esc(i.title)}</div>` + (line ? `<div class="excerpt">${esc(line.slice(0, 150))}</div>` : '') +
+    `<div class="meta">${linkPills({ spawned: i.links.spawned, related: i.links.related })}${tagPills(i.tags)}</div><div class="actions">${acts}</div>`;
+  return c;
+}
+let firstPaint = true;
+function fill(container, items, render, emptyMsg) {
+  container.innerHTML = '';
+  if (!items.length) return container.appendChild(el('div', 'empty', emptyMsg));
+  items.forEach((it, idx) => { const card = render(it); if (firstPaint) { card.classList.add('enter'); card.style.animationDelay = `${Math.min(idx * 45, 360)}ms`; } container.appendChild(card); });
+}
+
+let lastData = null;
+async function refresh() {
+  let data;
+  try { data = await (await fetch('/api/store')).json(); }
+  catch { $('#status').classList.add('offline'); $('#status-text').textContent = 'offline'; return; }
+  lastData = data;
+  const openTasks = data.tasks.filter((t) => t.status === 'open').sort((a, b) => (!!b.remind_at - !!a.remind_at) || String(a.remind_at || '~').localeCompare(String(b.remind_at || '~')));
+  const reminders = openTasks.filter((t) => t.remind_at).slice(0, 10);
+  $('#reminders-section').hidden = reminders.length === 0;
+  const strip = $('#reminder-strip'); strip.innerHTML = '';
+  reminders.forEach((t) => { const r = relTime(t.remind_at); const chip = el('div', 'rem-chip' + (r.overdue ? ' overdue' : '')); chip.innerHTML = `<span class="rem-title">${esc(t.title)}</span><span class="rem-when">${esc(r.text)}</span>`; strip.appendChild(chip); });
+  const activeProjects = data.projects.filter((p) => p.status !== 'done' && p.status !== 'abandoned');
+  const liveIdeas = data.ideas.filter((i) => !(i.tags || []).includes('archived'));
+  fill($('#col-tasks'), openTasks, (t) => taskCard(t, false), 'No open tasks. Clear mind.');
+  fill($('#col-projects'), activeProjects, projectCard, 'No active projects.');
+  fill($('#col-ideas'), liveIdeas, (i) => ideaCard(i, false), 'No ideas captured yet.');
+  $('#count-tasks').textContent = openTasks.length; $('#count-projects').textContent = activeProjects.length; $('#count-ideas').textContent = liveIdeas.length;
+  $('#status').classList.remove('offline'); $('#status-text').textContent = 'live';
+  firstPaint = false;
+  if ($('#view-archive').classList.contains('active')) renderArchive();
+}
+
+// archive view (task/idea history)
+function renderArchive() {
+  if (!lastData) { refresh(); return; }
+  const doneTasks = lastData.tasks
+    .filter((t) => t.status === 'done' || t.status === 'dismissed')
+    .sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')));
+  const archIdeas = lastData.ideas.filter((i) => (i.tags || []).includes('archived'));
+  fill($('#arch-tasks'), doneTasks, (t) => taskCard(t, true), 'Nothing finished yet.');
+  fill($('#arch-ideas'), archIdeas, (i) => ideaCard(i, true), 'No archived ideas.');
+  $('#count-arch-tasks').textContent = doneTasks.length;
+  $('#count-arch-ideas').textContent = archIdeas.length;
+}
+
+// task status actions (Done / Dismiss / Reopen)
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.actions button[data-status]'); if (!btn) return;
+  btn.disabled = true;
+  try { await fetch(`/api/tasks/${encodeURIComponent(btn.dataset.id)}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: btn.dataset.status }) }); }
+  finally { refresh(); }
+});
+
+// archive / restore ideas
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.actions button[data-action="archive"]'); if (!btn) return;
+  btn.disabled = true;
+  try { await fetch(`/api/ideas/${encodeURIComponent(btn.dataset.id)}/archive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: btn.dataset.archived === 'true' }) }); }
+  finally { refresh(); }
+});
+
+// discuss an entity with Jarvis (fresh session, seeded with the file to read)
+const STORE_DIRS = { idea: 'ideas', project: 'projects', task: 'tasks' };
+function discussEntity(type, id, title) {
+  chatSession = null;
+  $('#chat-sub').textContent = `discussing: ${title}`;
+  openChatMobile();
+  sendChat(`Let's discuss the ${type} "${title}". Read store/${STORE_DIRS[type]}/${id}.md first (and anything it links to), then give me a short summary and your suggested next steps.`);
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action="discuss"]'); if (!btn) return;
+  discussEntity(btn.dataset.type, btn.dataset.id, btn.dataset.title);
+});
+
+// spawn a Project from an Idea/Task, then hand it to Jarvis to plan
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-action="spawn"]'); if (!btn) return;
+  btn.disabled = true;
+  try {
+    const body = btn.dataset.source === 'idea' ? { ideaId: btn.dataset.id } : { taskId: btn.dataset.id };
+    const res = await (await fetch('/api/projects/spawn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (res.error) throw new Error(res.error);
+    refresh();
+    chatSession = null;
+    $('#chat-sub').textContent = `planning: ${res.title}`;
+    openChatMobile();
+    sendChat(`I just spawned the project "${res.title}" (store/projects/${res.id}.md) from the ${btn.dataset.source} "${btn.dataset.title}". Read the project file and its linked ${btn.dataset.source}, then help me plan it: sharpen the goal, propose the first 2-3 tasks, and flag open questions.`);
+  } catch (err) {
+    alert('Could not spawn project: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// quick add
+let mode = 'task';
+function setMode(next) {
+  mode = next; const isTask = mode === 'task';
+  $('#mode-task').classList.toggle('active', isTask); $('#mode-idea').classList.toggle('active', !isTask);
+  $('#mode-task').setAttribute('aria-pressed', String(isTask)); $('#mode-idea').setAttribute('aria-pressed', String(!isTask));
+  $('#qa-when').style.display = isTask ? '' : 'none'; $('#qa-input').placeholder = isTask ? 'Capture a task…' : 'Capture an idea…';
+}
+$('#mode-task').addEventListener('click', () => setMode('task'));
+$('#mode-idea').addEventListener('click', () => setMode('idea'));
+async function submitQuickAdd() {
+  const input = $('#qa-input'), title = input.value.trim(); if (!title) return input.focus();
+  const isTask = mode === 'task';
+  await fetch(isTask ? '/api/tasks' : '/api/ideas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(isTask ? { title, remind_at: $('#qa-when').value } : { title }) });
+  input.value = ''; $('#qa-when').value = ''; refresh(); input.focus();
+}
+$('#qa-submit').addEventListener('click', submitQuickAdd);
+$('#qa-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitQuickAdd(); });
+
+// ---- workspaces ---------------------------------------------------------
+async function loadWorkspaces() {
+  const list = $('#ws-list');
+  let ws = [];
+  try { ws = await (await fetch('/api/workspaces')).json(); } catch { /* */ }
+  $('#nav-ws').textContent = ws.length;
+  list.innerHTML = '';
+  if (!ws.length) { list.appendChild(el('div', 'empty', 'No workspaces yet. Add your other project folders so Jarvis can read across them.')); return; }
+  ws.forEach((w) => {
+    const item = el('div', 'ws-item');
+    item.innerHTML = `<span class="ws-ic">${ic('folder')}</span><div class="ws-meta"><div class="ws-label">${esc(w.label)}</div><div class="ws-path">${esc(w.path)}</div></div>` +
+      `<button class="ws-remove" data-path="${esc(w.path)}">Remove</button>`;
+    list.appendChild(item);
+  });
+}
+$('#ws-add').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const path = $('#ws-path').value.trim(); if (!path) return;
+  await fetch('/api/workspaces', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path, label: $('#ws-label').value.trim() }) });
+  $('#ws-path').value = ''; $('#ws-label').value = ''; loadWorkspaces();
+});
+document.addEventListener('click', async (e) => {
+  const rm = e.target.closest('.ws-remove'); if (!rm) return;
+  await fetch('/api/workspaces/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: rm.dataset.path }) });
+  loadWorkspaces();
+});
+
+// ---- history ------------------------------------------------------------
+async function loadHistory() {
+  const list = $('#hist-list');
+  let chats = [];
+  try { chats = await (await fetch('/api/chats')).json(); } catch { /* */ }
+  list.innerHTML = '';
+  if (!chats.length) { list.appendChild(el('div', 'empty', 'No conversations yet. Chat with Jarvis and they’ll show up here.')); return; }
+  chats.forEach((c) => {
+    const item = el('button', 'hist-item');
+    item.innerHTML = `<span class="hist-ic">${ic('chat')}</span><div class="hist-meta"><div class="hist-title">${esc(c.title)}</div><div class="hist-sub">${c.turns} turn${c.turns === 1 ? '' : 's'} · ${fmtDate(c.updated)}</div></div>`;
+    item.addEventListener('click', () => openThread(c.id));
+    list.appendChild(item);
+  });
+}
+async function openThread(id) {
+  let thread; try { thread = await (await fetch('/api/chats/' + encodeURIComponent(id))).json(); } catch { return; }
+  if (!thread || !thread.messages) return;
+  chatSession = id;
+  $('#chat-sub').textContent = 'resumed conversation';
+  chatLog.innerHTML = '';
+  thread.messages.forEach((m) => {
+    const b = addMsg(m.role === 'user' ? 'user' : 'bot');
+    b.bubble.textContent = m.text || (m.role === 'bot' ? '(no reply)' : '');
+    if (m.tools && m.tools.length) m.tools.forEach((t) => b.tools.insertAdjacentHTML('beforeend', toolChip(t)));
+  });
+  location.hash = 'overview'; // bring board back; chat dock shows the thread
+  openChatMobile();
+  scrollChat();
+}
+
+// ---- chat ---------------------------------------------------------------
+const chatLog = $('#chat-log'), chatInput = $('#chat-input'), chatSend = $('#chat-send');
+let chatSession = null, chatBusy = false;
+let attachments = []; // {path, dataUrl}
+const scrollChat = () => { chatLog.scrollTop = chatLog.scrollHeight; };
+
+function addMsg(role) {
+  const wrap = el('div', `msg ${role}`), bubble = el('div', 'bubble'), tools = el('div', 'tools');
+  wrap.appendChild(bubble); if (role === 'bot') wrap.appendChild(tools);
+  chatLog.appendChild(wrap); scrollChat();
+  return { wrap, bubble, tools };
+}
+const toolChip = (name) => `<span class="tool-chip">${ic('spark')}${esc(name)}</span>`;
+
+function renderAttachments() {
+  const row = $('#attach-row'); row.hidden = attachments.length === 0; row.innerHTML = '';
+  attachments.forEach((a, i) => {
+    const t = el('div', 'attach-thumb' + (a.uploading ? ' loading' : ''));
+    t.innerHTML = a.uploading ? '…' : `<img src="${a.dataUrl}" alt="attachment"/><button type="button" aria-label="Remove" data-i="${i}">×</button>`;
+    row.appendChild(t);
+  });
+}
+$('#attach-row').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-i]'); if (!b) return;
+  attachments.splice(+b.dataset.i, 1); renderAttachments();
+});
+
+// paste image
+chatInput.addEventListener('paste', async (e) => {
+  const items = [...(e.clipboardData?.items || [])].filter((it) => it.type.startsWith('image/'));
+  if (!items.length) return;
+  e.preventDefault();
+  for (const it of items) {
+    const file = it.getAsFile(); if (!file) continue;
+    const dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+    const entry = { dataUrl, uploading: true }; attachments.push(entry); renderAttachments();
+    try {
+      const res = await (await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: file.name || 'paste', dataUrl }) })).json();
+      entry.path = res.path; entry.uploading = false;
+    } catch { entry.error = true; entry.uploading = false; }
+    renderAttachments();
+  }
+});
+
+async function sendChat(text) {
+  const imgs = attachments.filter((a) => a.path);
+  if (chatBusy || (!text.trim() && !imgs.length)) return;
+  chatBusy = true; chatSend.disabled = true;
+  const hello = $('#chat-hello'); if (hello) hello.remove();
+
+  const u = addMsg('user');
+  u.bubble.textContent = text || '(image)';
+  if (imgs.length) { const wrap = el('div', 'msg-imgs'); imgs.forEach((a) => { const im = new Image(); im.src = a.dataUrl; wrap.appendChild(im); }); u.wrap.insertBefore(wrap, u.bubble); }
+  const sentAttachments = imgs.map((a) => ({ path: a.path }));
+  attachments = []; renderAttachments();
+
+  const bot = addMsg('bot'); bot.bubble.innerHTML = '<span class="caret"></span>';
+  let acc = ''; const seen = new Set();
+  const finishErr = (msg) => { bot.wrap.classList.add('error'); bot.bubble.textContent = msg; };
+
+  try {
+    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments }) });
+    if (!resp.ok || !resp.body) throw new Error('server');
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1); if (!line.trim()) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.type === 'session') { chatSession = ev.id; $('#chat-sub').textContent = 'active conversation'; }
+        else if (ev.type === 'text') { acc += ev.value; bot.bubble.innerHTML = `${esc(acc)}<span class="caret"></span>`; scrollChat(); }
+        else if (ev.type === 'tool') { if (!seen.has(ev.name)) { seen.add(ev.name); bot.tools.insertAdjacentHTML('beforeend', toolChip(ev.name)); } }
+        else if (ev.type === 'error') {
+          if (ev.error === 'not_logged_in') finishErr('The brain isn’t authenticated. Run  claude setup-token  and put the token in dashboard/.claude-token, then try again.');
+          else finishErr(ev.message || 'Something went wrong.');
+        }
+      }
+    }
+  } catch { finishErr('Could not reach the brain. Is the server running?'); }
+  finally {
+    if (!bot.wrap.classList.contains('error')) bot.bubble.innerHTML = esc(acc) || '(no reply)';
+    chatBusy = false; chatSend.disabled = false; chatInput.focus(); refresh();
+  }
+}
+function autoGrow() { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px'; }
+chatInput.addEventListener('input', autoGrow);
+$('#composer').addEventListener('submit', (e) => { e.preventDefault(); const t = chatInput.value.trim(); if (!t && !attachments.some((a) => a.path)) return; chatInput.value = ''; autoGrow(); sendChat(t); });
+chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#composer').requestSubmit(); } });
+$('#chat-new').addEventListener('click', () => {
+  chatSession = null; attachments = []; renderAttachments(); $('#chat-sub').textContent = 'reads & writes your Store';
+  chatLog.innerHTML = '<div class="chat-hello" id="chat-hello"><p>New chat. I still share the Store — previous notes and tasks are all here.</p></div>';
+});
+document.addEventListener('click', (e) => {
+  const s = e.target.closest('.suggest'); if (!s) return;
+  const t = s.textContent.trim();
+  if (t.endsWith('…')) { chatInput.value = t.slice(0, -1); chatInput.focus(); autoGrow(); } else sendChat(t);
+});
+function openChatMobile() { if (window.innerWidth <= 1200) $('.chat').classList.add('open'); }
+
+// ---- boot ---------------------------------------------------------------
+function tickClock() { $('#clock').textContent = fmtClock(); }
+tickClock(); setInterval(tickClock, 1000);
+setMode('task');
+showView(location.hash.slice(1) || 'overview');
+refresh(); setInterval(refresh, 15000);
+// keep the sidebar workspace count fresh on load
+fetch('/api/workspaces').then((r) => r.json()).then((w) => { $('#nav-ws').textContent = w.length; }).catch(() => {});

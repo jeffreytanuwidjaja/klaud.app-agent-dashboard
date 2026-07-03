@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent OS</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true">
+      <div class="glow glow-1"></div>
+      <div class="glow glow-2"></div>
+      <div class="grid-lines"></div>
+    </div>
+
+    <div class="app">
+      <!-- ===== Sidebar ===== -->
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+              <path d="M12 2 21 12 12 22 3 12Z" /><path d="M12 7.5 16.5 12 12 16.5 7.5 12Z" opacity="0.55" />
+            </svg>
+          </span>
+          <div class="brand-text">
+            <h1>Agent OS</h1>
+            <p>Jarvis</p>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Primary">
+          <button class="nav-item active" data-view="overview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            <span>Overview</span>
+          </button>
+          <button class="nav-item" data-view="workspaces">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2 2 0 0 1 5 5.5h3.5l2 2H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+            <span>Workspaces</span>
+            <span class="nav-count" id="nav-ws">0</span>
+          </button>
+          <button class="nav-item" data-view="history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3 8"/><path d="M3 3.5V8h4.5"/><path d="M12 8v4.2l3 1.8"/></svg>
+            <span>History</span>
+          </button>
+          <button class="nav-item" data-view="archive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4.5" rx="1"/><path d="M5 8.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5"/><path d="M10 12.5h4"/></svg>
+            <span>Archive</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-foot">
+          <span class="status-chip" id="status" role="status" aria-live="polite">
+            <span class="status-dot"></span><span id="status-text">connecting</span>
+          </span>
+          <time class="clock" id="clock" aria-label="Current time">—</time>
+        </div>
+      </aside>
+
+      <!-- ===== Main ===== -->
+      <main class="main">
+        <!-- Overview -->
+        <section class="view active" id="view-overview">
+          <section class="command" aria-label="Quick capture">
+            <span class="command-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></span>
+            <label class="visually-hidden" for="qa-input">Capture a task or idea</label>
+            <input id="qa-input" type="text" placeholder="Capture a task…" autocomplete="off" spellcheck="false" />
+            <label class="visually-hidden" for="qa-when">Remind at</label>
+            <input id="qa-when" type="datetime-local" title="Remind me at…" />
+            <div class="segmented" role="group" aria-label="Capture as">
+              <button type="button" id="mode-task" class="seg active" aria-pressed="true">Task</button>
+              <button type="button" id="mode-idea" class="seg" aria-pressed="false">Idea</button>
+            </div>
+            <button id="qa-submit" class="btn-primary" type="button">Add</button>
+          </section>
+
+          <section class="rail" id="reminders-section" aria-label="Reminders" hidden>
+            <div class="section-head">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+              <h2>Reminders</h2>
+            </div>
+            <div class="rail-strip" id="reminder-strip"></div>
+          </section>
+
+          <div class="grid">
+            <section class="panel" aria-labelledby="h-tasks">
+              <div class="panel-head"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l2.5 2.5L16 9"/><rect x="3.5" y="3.5" width="17" height="17" rx="4"/></svg><h2 id="h-tasks">Tasks</h2><span class="count" id="count-tasks">0</span></div>
+              <div class="cards" id="col-tasks"></div>
+            </section>
+            <section class="panel" aria-labelledby="h-projects">
+              <div class="panel-head"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5H9l2 2h7.5a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></svg><h2 id="h-projects">Projects</h2><span class="count" id="count-projects">0</span></div>
+              <div class="cards" id="col-projects"></div>
+            </section>
+            <section class="panel" aria-labelledby="h-ideas">
+              <div class="panel-head"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21.5h4"/><path d="M12 2.5A6.5 6.5 0 0 0 8 14c.7.6 1 1.2 1 2h6c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 2.5Z"/></svg><h2 id="h-ideas">Ideas</h2><span class="count" id="count-ideas">0</span></div>
+              <div class="cards" id="col-ideas"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- Workspaces -->
+        <section class="view" id="view-workspaces">
+          <div class="view-head"><h2>Workspaces</h2><p>Folders Jarvis can read for cross-project context — your other repos, Obsidian vaults, and <code>graphify-out/</code> graphs.</p></div>
+          <form class="ws-add" id="ws-add">
+            <input id="ws-path" type="text" placeholder="D:\path\to\your\project" autocomplete="off" spellcheck="false" />
+            <input id="ws-label" type="text" placeholder="Label (optional)" autocomplete="off" />
+            <button class="btn-primary" type="submit">Add</button>
+          </form>
+          <div class="ws-list" id="ws-list"></div>
+        </section>
+
+        <!-- History -->
+        <section class="view" id="view-history">
+          <div class="view-head"><h2>Chat history</h2><p>Past conversations with Jarvis. Open one to continue it.</p></div>
+          <div class="hist-list" id="hist-list"></div>
+        </section>
+
+        <!-- Archive -->
+        <section class="view" id="view-archive">
+          <div class="view-head"><h2>Archive</h2><p>Finished tasks and retired ideas. Nothing is ever deleted — reopen or restore anything.</p></div>
+          <div class="grid">
+            <section class="panel" aria-labelledby="h-arch-tasks">
+              <div class="panel-head"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l2.5 2.5L16 9"/><rect x="3.5" y="3.5" width="17" height="17" rx="4"/></svg><h2 id="h-arch-tasks">Tasks — done &amp; dismissed</h2><span class="count" id="count-arch-tasks">0</span></div>
+              <div class="cards" id="arch-tasks"></div>
+            </section>
+            <section class="panel" aria-labelledby="h-arch-ideas">
+              <div class="panel-head"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21.5h4"/><path d="M12 2.5A6.5 6.5 0 0 0 8 14c.7.6 1 1.2 1 2h6c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 2.5Z"/></svg><h2 id="h-arch-ideas">Ideas — archived</h2><span class="count" id="count-arch-ideas">0</span></div>
+              <div class="cards" id="arch-ideas"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <!-- ===== Chat dock ===== -->
+      <aside class="chat" aria-label="Jarvis chat">
+        <div class="chat-head">
+          <span class="chat-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2 21 12 12 22 3 12Z"/><path d="M12 7.5 16.5 12 12 16.5 7.5 12Z" opacity="0.55"/></svg></span>
+          <div class="chat-title"><h2>Jarvis</h2><p id="chat-sub">reads &amp; writes your Store</p></div>
+          <button id="chat-new" class="icon-btn" type="button" aria-label="Start a new chat" title="New chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+
+        <div class="chat-log" id="chat-log">
+          <div class="chat-hello" id="chat-hello">
+            <p>I share the Store with every session — and, once you add Workspaces, I can reach across your other projects too. Ask me to capture an idea, plan a project, or tell you what's going on.</p>
+            <div class="chat-suggests">
+              <button class="suggest" type="button">What's on my plate?</button>
+              <button class="suggest" type="button">Capture an idea…</button>
+              <button class="suggest" type="button">Remind me to…</button>
+            </div>
+          </div>
+        </div>
+
+        <form class="composer" id="composer">
+          <div class="attach-row" id="attach-row" hidden></div>
+          <div class="composer-input">
+            <label class="visually-hidden" for="chat-input">Message Jarvis</label>
+            <textarea id="chat-input" rows="1" placeholder="Message Jarvis…  (paste an image to attach)" autocomplete="off"></textarea>
+            <button class="send" id="chat-send" type="submit" aria-label="Send message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          </div>
+        </form>
+      </aside>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

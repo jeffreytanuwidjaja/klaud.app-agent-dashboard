@@ -1,0 +1,16 @@
+{
+  "name": "agent-os-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Dashboard for Agent OS — renders the Store and fires reminders.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "node-notifier": "^10.0.1"
+  }
+}

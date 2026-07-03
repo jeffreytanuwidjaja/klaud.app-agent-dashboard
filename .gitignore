@@ -1,0 +1,23 @@
+# --- secrets: NEVER commit ---
+dashboard/.claude-token
+
+# --- personal data: your Store is yours, not the app's ---
+store/ideas/*
+store/projects/*
+store/tasks/*
+store/sessions/*
+!store/README.md
+
+# --- runtime state ---
+dashboard/chats/
+dashboard/attachments/
+dashboard/config.json
+dashboard/notified.json
+
+# --- node ---
+node_modules/
+npm-debug.log*
+
+# --- misc ---
+.DS_Store
+Thumbs.db
