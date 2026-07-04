@@ -73,8 +73,9 @@ function taskCard(t, archived) {
 }
 function projectCard(p) {
   const c = el('div', 'card'); const line = firstLine(p.body, true);
+  const wsPill = p.workspace ? `<span class="pill link" title="${esc(p.workspace)}">${ic('folder')}${esc(p.workspace.split(/[\\/]/).filter(Boolean).pop() || p.workspace)}</span>` : '';
   c.innerHTML = `<div class="title">${esc(p.title)}</div>` + (line ? `<div class="excerpt">${esc(line.slice(0, 150))}</div>` : '') +
-    `<div class="meta"><span class="pill status ${esc(p.status)}">${esc(p.status || 'project')}</span>${linkPills({ from_ideas: p.links.from_ideas, related: p.links.related })}</div>` +
+    `<div class="meta"><span class="pill status ${esc(p.status)}">${esc(p.status || 'project')}</span>${wsPill}${linkPills({ from_ideas: p.links.from_ideas, related: p.links.related })}</div>` +
     `<div class="actions">${discussBtn('project', p.id, p.title)}${obsidianBtn(p.file, p.title)}</div>`;
   return c;
 }
@@ -214,15 +215,25 @@ $('#qa-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submi
 // ---- workspaces ---------------------------------------------------------
 async function loadWorkspaces() {
   const list = $('#ws-list');
-  let ws = [];
+  let ws = [], projects = [];
   try { ws = await (await fetch('/api/workspaces')).json(); } catch { /* */ }
+  try { projects = (lastData && lastData.projects) || (await (await fetch('/api/store')).json()).projects; } catch { /* */ }
   $('#nav-ws').textContent = ws.length;
   list.innerHTML = '';
   if (!ws.length) { list.appendChild(el('div', 'empty', 'No workspaces yet. Add your other project folders so Jarvis can read across them.')); return; }
+  const linkable = projects.filter((p) => p.status !== 'done' && p.status !== 'abandoned');
   ws.forEach((w) => {
+    const linked = projects.filter((p) => p.workspace && p.workspace.toLowerCase() === w.path.toLowerCase());
+    const linkedPills = linked.map((p) => `<span class="pill link">${ic('link')}${esc(p.title)}</span>`).join('');
+    const opts = linkable.filter((p) => !linked.some((l) => l.id === p.id)).map((p) => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('');
     const item = el('div', 'ws-item');
-    item.innerHTML = `<span class="ws-ic">${ic('folder')}</span><div class="ws-meta"><div class="ws-label">${esc(w.label)}</div><div class="ws-path">${esc(w.path)}</div></div>` +
-      `<button class="ws-remove" data-path="${esc(w.path)}">Remove</button>`;
+    item.innerHTML = `<span class="ws-ic">${ic('folder')}</span>` +
+      `<div class="ws-meta"><div class="ws-label">${esc(w.label)}</div><div class="ws-path">${esc(w.path)}</div>${linkedPills ? `<div class="ws-links">${linkedPills}</div>` : ''}</div>` +
+      `<div class="ws-actions">` +
+        `<button class="ws-btn" data-action="ws-promote" data-path="${esc(w.path)}" data-label="${esc(w.label)}">${ic('spark')}<span>Make project</span></button>` +
+        (opts ? `<select class="ws-link" data-path="${esc(w.path)}" aria-label="Link to an existing project"><option value="">Link to project…</option>${opts}</select>` : '') +
+        `<button class="ws-remove" data-path="${esc(w.path)}">Remove</button>` +
+      `</div>`;
     list.appendChild(item);
   });
 }
@@ -236,6 +247,27 @@ document.addEventListener('click', async (e) => {
   const rm = e.target.closest('.ws-remove'); if (!rm) return;
   await fetch('/api/workspaces/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: rm.dataset.path }) });
   loadWorkspaces();
+});
+
+// promote a Workspace folder into a Project, then hand it to Jarvis to plan
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-action="ws-promote"]'); if (!b) return;
+  b.disabled = true;
+  try {
+    const res = await (await fetch('/api/projects/spawn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: b.dataset.label, workspace: b.dataset.path }) })).json();
+    if (res.error) throw new Error(res.error);
+    await refresh(); loadWorkspaces();
+    chatSession = null; $('#chat-sub').textContent = `planning: ${res.title}`; openChatMobile();
+    sendChat(`I just created the project "${res.title}" (store/projects/${res.id}.md) from my workspace folder ${b.dataset.path}. Read the project file, then explore that workspace (its README, structure, any graphify-out/ graph or Obsidian notes) and help me plan: summarize what this project is, propose the first 2-3 tasks, and flag open questions.`);
+  } catch (err) { alert('Could not create project: ' + err.message); }
+  finally { b.disabled = false; }
+});
+
+// link a Workspace to an existing Project
+document.addEventListener('change', async (e) => {
+  const sel = e.target.closest('select.ws-link'); if (!sel || !sel.value) return;
+  await fetch('/api/projects/link-workspace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: sel.value, path: sel.dataset.path }) });
+  await refresh(); loadWorkspaces();
 });
 
 // ---- history ------------------------------------------------------------

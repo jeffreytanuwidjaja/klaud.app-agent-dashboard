@@ -43,8 +43,14 @@ app.post('/api/chat', (req, res) => {
 // Available brains (Claude, ChatGPT/Codex, Gemini, …).
 app.get('/api/providers', wrap(() => providers.list()));
 
-// Spawn a Project from an Idea or Task (spawn + link, never transform).
+// Spawn a Project from an Idea, Task, or Workspace folder (spawn + link).
 app.post('/api/projects/spawn', wrap((req) => store.spawnProject(req.body || {})));
+
+// Link an existing Project to a Workspace folder (sets its workspace path).
+app.post('/api/projects/link-workspace', wrap((req) => {
+  store.setProjectWorkspace(req.body.projectId, req.body.path);
+  return { ok: true };
+}));
 
 // Retire / restore an Idea (archived is a tag; ideas are never deleted).
 app.post('/api/ideas/:id/archive', wrap((req) => {

@@ -160,7 +160,7 @@ function createIdea({ title, body = '' }) {
 
 // Spawn a Project from an Idea or Task (spawn + link, never transform — the
 // source stays in place; links are written on BOTH sides per the glossary).
-function spawnProject({ title, ideaId, taskId }) {
+function spawnProject({ title, ideaId, taskId, workspace }) {
   const find = (type, id) => readFolder(type).find((e) => e.id === id);
   const idea = ideaId ? find('idea', ideaId) : null;
   const task = taskId ? find('task', taskId) : null;
@@ -206,7 +206,20 @@ function spawnProject({ title, ideaId, taskId }) {
       d.project = `[[${id}]]`;
     });
   }
+  if (workspace && workspace.trim()) {
+    editFrontmatter(path.join(STORE, FOLDERS.project, id + '.md'), (d) => {
+      d.workspace = workspace.trim();
+    });
+  }
   return { id, title: projTitle };
+}
+
+// Point an existing Project at a Workspace folder (or clear it with '').
+function setProjectWorkspace(projectId, workspacePath) {
+  const file = path.join(STORE, FOLDERS.project, projectId + '.md');
+  editFrontmatter(file, (d) => {
+    d.workspace = (workspacePath || '').trim();
+  });
 }
 
 // Retire / restore an Idea (ideas are permanent — archived is just a tag).
@@ -220,4 +233,4 @@ function setIdeaArchived(id, archived) {
   });
 }
 
-module.exports = { readFolder, snapshot, writeStatus, createTask, createIdea, spawnProject, setIdeaArchived, STORE };
+module.exports = { readFolder, snapshot, writeStatus, createTask, createIdea, spawnProject, setProjectWorkspace, setIdeaArchived, STORE };

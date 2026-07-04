@@ -157,8 +157,16 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 .ws-item .ws-meta { flex: 1; min-width: 0; }
 .ws-item .ws-label { font-size: 14px; font-weight: 600; }
 .ws-item .ws-path { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-meta .ws-links { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.ws-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ws-btn { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; min-height: 34px; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
+.ws-btn .ic { width: 13px; height: 13px; }
+.ws-btn:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.ws-link { font-family: inherit; font-size: 12px; color: var(--muted); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 34px; cursor: pointer; max-width: 150px; }
+.ws-link:hover, .ws-link:focus { border-color: var(--accent-line); outline: none; }
 .ws-remove { font-family: inherit; font-size: 12px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; min-height: 34px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
 .ws-remove:hover { color: var(--danger); border-color: rgba(242,104,94,0.5); }
+@media (max-width: 640px) { .ws-item { flex-wrap: wrap; } .ws-actions { width: 100%; } }
 
 /* history view */
 .hist-list { display: flex; flex-direction: column; gap: 10px; }
