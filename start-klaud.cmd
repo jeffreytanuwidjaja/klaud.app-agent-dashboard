@@ -11,10 +11,14 @@ if not exist node_modules (
 
 echo ============================================================
 echo   Klaud dashboard starting...
-echo   Open  http://localhost:4317  in your browser.
+echo   Your browser will open http://localhost:4317 shortly.
 echo   Keep this window open. Close it to stop the server.
 echo ============================================================
 echo.
+
+REM Open the browser once the server has had a moment to start (detached).
+start "" powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 4; Start-Process 'http://localhost:4317'"
+
 call npm start
 
 echo.
