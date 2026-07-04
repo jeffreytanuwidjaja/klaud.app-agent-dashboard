@@ -19,7 +19,7 @@ Chat assistants forget. Notes apps don't think. Klaud splits the difference:
 - 🧠 **Multi-LLM brains** — pick the model per conversation: Claude (first-class), ChatGPT via Codex CLI, or Gemini CLI; all follow the same Store protocol (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), so memory survives a brain swap
 - ⏰ **Reminders** — a task with a `remind_at` fires a native Windows toast; the dashboard server is the always-on scheduler
 - 🌱 **Ideas spawn Projects** — one click turns an idea into a linked project (idea stays put — provenance is permanent) and drops you into an AI planning chat
-- 🔎 **Cross-workspace context** — register your other repos/vaults as Workspaces; the brain reads across all of them
+- 🔎 **Cross-workspace context** — register your other repos/vaults as Workspaces; the brain reads across all of them. Promote a workspace folder into a Project in one click (opens a planning chat that explores the folder), or link it to an existing Project — the relationship is two-way and optional
 - 🖼 **Image paste** — paste screenshots into chat; the brain views them
 - 🕘 **Full history** — past chats are browsable and resumable; finished tasks and retired ideas live in the Archive, never deleted
 - 💎 **Obsidian built in** — the Store is a valid Obsidian vault: one click opens it (or any single idea/task/project) in Obsidian for graph view and rich editing
@@ -90,6 +90,18 @@ The Store follows Obsidian conventions by design (ADR 0002): YAML frontmatter, `
 - Nothing *depends* on Obsidian — it's a free power-up, not a requirement; `.obsidian/` state stays gitignored
 
 Tip: open `store/` (not the repo root) as the vault so your graph shows only your knowledge, not the app's code.
+
+## Workspaces
+
+Workspaces are folders elsewhere on disk — your other repos, Obsidian vaults, `graphify-out/` graphs — that you let the brain read for cross-project context. Add them in the **Workspaces** tab; every AI turn then passes them to the brain (Claude via `--add-dir`), so Jarvis can reason across all your projects, not just the Store.
+
+Workspaces and Projects are two-way linked:
+
+- **Make project** turns a workspace folder into a managed Project (its `workspace` field is set to that path) and opens a planning chat that explores the folder
+- **Link to project** attaches a folder to a Project you already have
+- Project cards show their linked folder; workspace cards show which Projects point at them
+
+The link is **optional** — a workspace can stay reference-only (just for the brain to read), become a Project, or attach to one. Nothing is forced.
 
 ## Security notes
 
