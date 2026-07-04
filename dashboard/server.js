@@ -12,7 +12,15 @@ const providers = require('./lib/providers');
 
 const app = express();
 app.use(express.json({ limit: '25mb' })); // room for pasted images (base64)
-app.use(express.static(path.join(__dirname, 'public')));
+// No static caching — a local dev tool; always serve the latest CSS/JS so a
+// code change is never masked by a stale browser cache.
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
+  })
+);
 
 const wrap = (fn) => (req, res) => {
   try {

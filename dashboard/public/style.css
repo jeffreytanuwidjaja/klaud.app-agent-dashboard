@@ -73,7 +73,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 /* ===== main ===== */
-.main { z-index: 10; overflow-y: auto; padding: 26px 28px; }
+.main { z-index: 10; min-width: 0; overflow-y: auto; overflow-x: hidden; padding: 26px 28px; }
 .view { display: none; }
 .view.active { display: block; animation: fade 0.3s ease; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -112,12 +112,12 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 
 /* grid + panels */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; align-items: start; }
-.panel { background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; }
+.panel { min-width: 0; background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; }
 .count { margin-left: auto; font-family: var(--font-display); font-size: 11.5px; color: var(--muted); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
 .cards { display: flex; flex-direction: column; gap: 11px; }
 
 /* card */
-.card { background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012)); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px; transition: transform 0.16s, border-color 0.16s, background 0.16s; }
+.card { min-width: 0; overflow-wrap: anywhere; background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012)); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px; transition: transform 0.16s, border-color 0.16s, background 0.16s; }
 .card:hover { transform: translateY(-2px); border-color: var(--line-strong); background: var(--panel-hover); }
 .card .title { font-size: 14.5px; font-weight: 600; line-height: 1.4; }
 .card .excerpt { color: var(--muted); font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
@@ -132,14 +132,14 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 .pill.tag { color: var(--faint); }
 .pill.remind { color: var(--amber); border-color: rgba(245,180,74,0.4); }
 .pill.remind.overdue { color: var(--danger); border-color: rgba(242,104,94,0.5); }
-.actions { display: flex; gap: 8px; margin-top: 13px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
 .actions button { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; min-height: 34px; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
 .actions button .ic { width: 14px; height: 14px; }
 .actions .done:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
 .actions .dismiss:hover { color: var(--danger); border-color: rgba(242,104,94,0.5); }
 .actions .spawn:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
 .actions .discuss:hover { color: var(--blue); border-color: rgba(106,166,255,0.5); }
-.actions .obsi { margin-left: auto; padding: 7px 9px; }
+.actions .obsi { padding: 7px 9px; }
 .actions .obsi:hover { color: #a88bfa; border-color: rgba(168,139,250,0.5); }
 .actions button:disabled { opacity: 0.5; cursor: default; }
 .empty { color: var(--faint); font-size: 13px; font-style: italic; padding: 10px 2px; }
@@ -220,7 +220,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 .attach-thumb button { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; display: grid; place-items: center; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; cursor: pointer; font-size: 11px; line-height: 1; }
 .attach-thumb.loading { display: grid; place-items: center; color: var(--muted); font-size: 10px; }
 .composer-input { display: flex; align-items: flex-end; gap: 9px; }
-.composer textarea { flex: 1; resize: none; max-height: 160px; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+.composer textarea { flex: 1; min-width: 0; resize: none; min-height: 44px; max-height: 160px; overflow-y: auto; scrollbar-width: thin; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
 .composer textarea::placeholder { color: var(--faint); }
 .composer textarea:focus { outline: none; border-color: var(--accent-line); }
 .send { flex: 0 0 auto; width: 42px; height: 42px; display: grid; place-items: center; color: var(--accent-ink); background: var(--accent); border: none; border-radius: 10px; cursor: pointer; transition: background 0.15s, transform 0.15s, opacity 0.15s; }
