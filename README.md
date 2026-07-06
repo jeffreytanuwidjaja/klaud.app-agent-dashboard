@@ -1,8 +1,12 @@
-# Klaud — Agent OS Dashboard
+# Klaud — your AI subscription, turned into a Jarvis
 
-**A personal Jarvis: one dashboard for your ideas, projects, tasks, and reminders — with a real AI brain that remembers across every session. Bring your own model: Claude, ChatGPT, or Gemini.**
+**You already pay for Claude, ChatGPT, or Gemini. Klaud turns that subscription into a personal Jarvis — one dashboard for ideas, projects, tasks, and reminders, with an AI that remembers across every session. No second AI bill. Your data never leaves your machine.**
+
+<!-- screenshot: docs/screenshot.png — dashboard with sidebar, board, and Jarvis dock -->
 
 Klaud is a local-first command center built on [Claude Code](https://claude.com/claude-code), with pluggable support for OpenAI's Codex CLI and Google's Gemini CLI. Talk to it in one session, and every other session knows what happened — because all context lives in a shared, human-readable markdown **Store**, not inside any single conversation or any single model. Start a project with Claude, continue it with ChatGPT: the markdown remembers.
+
+Free and open source, donation-supported. Built for people juggling too many projects — indie hackers, solo founders, anyone whose life is scattered across repos, vaults, and half-finished ideas.
 
 ## Why
 
