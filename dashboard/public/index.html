@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Agent OS</title>
+    <title>Klaud</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -11,6 +11,37 @@
       <div class="glow glow-1"></div>
       <div class="glow glow-2"></div>
       <div class="grid-lines"></div>
+    </div>
+
+    <!-- First-run onboarding -->
+    <div class="onboarding" id="onboarding" hidden>
+      <div class="ob-card" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+        <div class="ob-head">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2 21 12 12 22 3 12Z"/><path d="M12 7.5 16.5 12 12 16.5 7.5 12Z" opacity="0.55"/></svg>
+          </span>
+          <div>
+            <h1 id="ob-title">Welcome to Klaud</h1>
+            <p>The AI subscription you already pay for, turned into a second brain.</p>
+          </div>
+        </div>
+
+        <ul class="ob-points">
+          <li><strong>One board</strong> — ideas, projects, tasks &amp; reminders in a single view.</li>
+          <li><strong>An AI that remembers</strong> — every chat reads &amp; writes plain markdown on <em>your</em> machine (it's a valid Obsidian vault).</li>
+          <li><strong>No second AI bill</strong> — Klaud drives the Claude, ChatGPT, or Gemini you already have.</li>
+        </ul>
+
+        <h2 class="ob-step">Connect your AI</h2>
+        <p class="ob-substep">Pick at least one. Connecting opens that provider's own browser login — Klaud never sees your password.</p>
+        <div class="ob-providers" id="ob-providers"></div>
+        <pre class="ob-log" id="ob-log" hidden></pre>
+
+        <div class="ob-actions">
+          <button class="ob-skip" id="ob-skip" type="button">Skip for now</button>
+          <button class="btn-primary" id="ob-done" type="button">Start using Klaud</button>
+        </div>
+      </div>
     </div>
 
     <div class="app">
@@ -23,8 +54,8 @@
             </svg>
           </span>
           <div class="brand-text">
-            <h1>Agent OS</h1>
-            <p>Jarvis</p>
+            <h1>Klaud</h1>
+            <p>Agent OS</p>
           </div>
         </div>
 
@@ -107,7 +138,7 @@
 
         <!-- Workspaces -->
         <section class="view" id="view-workspaces">
-          <div class="view-head"><h2>Workspaces</h2><p>Folders Jarvis can read for cross-project context — your other repos, Obsidian vaults, and <code>graphify-out/</code> graphs.</p></div>
+          <div class="view-head"><h2>Workspaces</h2><p>Folders Klaud can read for cross-project context — your other repos, Obsidian vaults, and <code>graphify-out/</code> graphs.</p></div>
           <form class="ws-add" id="ws-add">
             <input id="ws-path" type="text" placeholder="D:\path\to\your\project" autocomplete="off" spellcheck="false" />
             <input id="ws-label" type="text" placeholder="Label (optional)" autocomplete="off" />
@@ -118,7 +149,7 @@
 
         <!-- History -->
         <section class="view" id="view-history">
-          <div class="view-head"><h2>Chat history</h2><p>Past conversations with Jarvis. Open one to continue it.</p></div>
+          <div class="view-head"><h2>Chat history</h2><p>Past conversations with Klaud. Open one to continue it.</p></div>
           <div class="hist-list" id="hist-list"></div>
         </section>
 
@@ -139,10 +170,10 @@
       </main>
 
       <!-- ===== Chat dock ===== -->
-      <aside class="chat" aria-label="Jarvis chat">
+      <aside class="chat" aria-label="Klaud chat">
         <div class="chat-head">
           <span class="chat-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2 21 12 12 22 3 12Z"/><path d="M12 7.5 16.5 12 12 16.5 7.5 12Z" opacity="0.55"/></svg></span>
-          <div class="chat-title"><h2>Jarvis</h2><p id="chat-sub">reads &amp; writes your Store</p></div>
+          <div class="chat-title"><h2>Klaud</h2><p id="chat-sub">reads &amp; writes your Store</p></div>
           <label class="visually-hidden" for="chat-provider">Brain</label>
           <select id="chat-provider" class="provider-select" title="Choose which AI runs this chat"></select>
           <button id="chat-new" class="icon-btn" type="button" aria-label="Start a new chat" title="New chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -173,8 +204,8 @@
           </div>
           <div class="attach-row" id="attach-row" hidden></div>
           <div class="composer-input">
-            <label class="visually-hidden" for="chat-input">Message Jarvis</label>
-            <textarea id="chat-input" rows="1" placeholder="Message Jarvis…" title="Paste an image to attach it" autocomplete="off"></textarea>
+            <label class="visually-hidden" for="chat-input">Message Klaud</label>
+            <textarea id="chat-input" rows="1" placeholder="Message Klaud…" title="Paste an image to attach it" autocomplete="off"></textarea>
             <button class="send" id="chat-send" type="submit" aria-label="Send message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           </div>
         </form>

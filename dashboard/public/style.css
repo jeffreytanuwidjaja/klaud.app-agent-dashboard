@@ -244,6 +244,46 @@ a.nav-item { text-decoration: none; }
 .send:active { transform: translateY(1px); }
 .send:disabled { opacity: 0.45; cursor: default; }
 
+/* ===== onboarding (first run) ===== */
+/* z-index 50 = overlay tier (scale: 10 base · 20 sticky · 30 sidebar · 50 overlay) */
+.onboarding {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center;
+  background: rgba(4, 7, 12, 0.8);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  padding: 20px;
+}
+.ob-card {
+  width: min(580px, 100%); max-height: 92vh; overflow-y: auto; scrollbar-width: thin;
+  background: linear-gradient(180deg, #101724, var(--panel-solid));
+  border: 1px solid var(--line-strong); border-radius: 20px;
+  padding: 32px 32px 24px;
+  animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ob-head { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+.ob-head h1 { font-family: var(--font-display); font-size: 22px; font-weight: 650; }
+.ob-head p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.ob-points { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.ob-points li { font-size: 13.5px; color: var(--muted); line-height: 1.55; padding-left: 22px; position: relative; }
+.ob-points li::before { content: ''; position: absolute; left: 4px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px rgba(62, 224, 200, 0.5); }
+.ob-points strong { color: var(--text); }
+.ob-step { font-family: var(--font-display); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.6px; color: var(--muted); margin-bottom: 6px; }
+.ob-substep { color: var(--faint); font-size: 12.5px; margin-bottom: 13px; }
+.ob-providers { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+.ob-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 12px 15px; }
+.ob-name { font-size: 14px; font-weight: 600; flex: 0 0 130px; }
+.ob-status { font-size: 11.5px; color: var(--faint); flex: 1; }
+.ob-status.ok { color: var(--accent); }
+.ob-btn { font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 8px; padding: 8px 16px; min-height: 36px; cursor: pointer; transition: background 0.15s; }
+.ob-btn:hover { background: rgba(62, 224, 200, 0.22); }
+.ob-btn:disabled { opacity: 0.5; cursor: default; }
+.ob-hint { font-size: 11.5px; color: var(--faint); max-width: 220px; text-align: right; }
+.ob-log { max-height: 140px; overflow-y: auto; scrollbar-width: thin; font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.5; color: var(--muted); background: #0a0f18; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; white-space: pre-wrap; word-break: break-word; }
+.ob-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; }
+.ob-skip { font-family: inherit; font-size: 13px; color: var(--faint); background: transparent; border: none; cursor: pointer; padding: 10px 6px; min-height: 44px; }
+.ob-skip:hover { color: var(--text); }
+.ob-actions .btn-primary:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+
 /* focus + motion */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 button, input, textarea { font-size: 15px; }

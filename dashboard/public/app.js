@@ -1,4 +1,4 @@
-// Agent OS Dashboard — sidebar app shell over the Store + Jarvis chat.
+// Agent OS Dashboard — sidebar app shell over the Store + Klaud chat.
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
@@ -53,7 +53,7 @@ const tagPills = (tags) => (tags || []).map((t) => `<span class="pill tag">#${es
 const firstLine = (body, skipH) => (body || '').split('\n').find((l) => l.trim() && (!skipH || !l.startsWith('#'))) || '';
 
 const discussBtn = (type, id, title) =>
-  `<button class="discuss" data-action="discuss" data-type="${type}" data-id="${esc(id)}" data-title="${esc(title)}" aria-label="Discuss '${esc(title)}' with Jarvis">${ic('chat')}<span>Discuss</span></button>`;
+  `<button class="discuss" data-action="discuss" data-type="${type}" data-id="${esc(id)}" data-title="${esc(title)}" aria-label="Discuss '${esc(title)}' with Klaud">${ic('chat')}<span>Discuss</span></button>`;
 const obsidianBtn = (file, title) =>
   file ? `<button class="obsi" data-action="obsidian" data-file="${esc(file)}" aria-label="Open '${esc(title)}' in Obsidian" title="Open in Obsidian">${ic('gem')}</button>` : '';
 
@@ -171,7 +171,7 @@ document.addEventListener('click', (e) => {
   sendChat(`Let's brainstorm around my idea "${btn.dataset.title}" (store/ideas/${btn.dataset.id}.md). Read it first, then push it further: variations, adjacent opportunities, what would make it 10x, and the sharpest question I should be asking. End by proposing which new sparks to capture as linked Ideas.`);
 });
 
-// discuss an entity with Jarvis (fresh session, seeded with the file to read)
+// discuss an entity with Klaud (fresh session, seeded with the file to read)
 const STORE_DIRS = { idea: 'ideas', project: 'projects', task: 'tasks' };
 function discussEntity(type, id, title) {
   chatSession = null;
@@ -184,7 +184,7 @@ document.addEventListener('click', (e) => {
   discussEntity(btn.dataset.type, btn.dataset.id, btn.dataset.title);
 });
 
-// spawn a Project from an Idea/Task, then hand it to Jarvis to plan
+// spawn a Project from an Idea/Task, then hand it to Klaud to plan
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action="spawn"]'); if (!btn) return;
   btn.disabled = true;
@@ -231,7 +231,7 @@ async function loadWorkspaces() {
   try { projects = (lastData && lastData.projects) || (await (await fetch('/api/store')).json()).projects; } catch { /* */ }
   $('#nav-ws').textContent = ws.length;
   list.innerHTML = '';
-  if (!ws.length) { list.appendChild(el('div', 'empty', 'No workspaces yet. Add your other project folders so Jarvis can read across them.')); return; }
+  if (!ws.length) { list.appendChild(el('div', 'empty', 'No workspaces yet. Add your other project folders so Klaud can read across them.')); return; }
   const linkable = projects.filter((p) => p.status !== 'done' && p.status !== 'abandoned');
   ws.forEach((w) => {
     const linked = projects.filter((p) => p.workspace && p.workspace.toLowerCase() === w.path.toLowerCase());
@@ -260,7 +260,7 @@ document.addEventListener('click', async (e) => {
   loadWorkspaces();
 });
 
-// promote a Workspace folder into a Project, then hand it to Jarvis to plan
+// promote a Workspace folder into a Project, then hand it to Klaud to plan
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-action="ws-promote"]'); if (!b) return;
   b.disabled = true;
@@ -287,7 +287,7 @@ async function loadHistory() {
   let chats = [];
   try { chats = await (await fetch('/api/chats')).json(); } catch { /* */ }
   list.innerHTML = '';
-  if (!chats.length) { list.appendChild(el('div', 'empty', 'No conversations yet. Chat with Jarvis and they’ll show up here.')); return; }
+  if (!chats.length) { list.appendChild(el('div', 'empty', 'No conversations yet. Chat with Klaud and they’ll show up here.')); return; }
   chats.forEach((c) => {
     const item = el('button', 'hist-item');
     item.innerHTML = `<span class="hist-ic">${ic('chat')}</span><div class="hist-meta"><div class="hist-title">${esc(c.title)}</div><div class="hist-sub">${c.turns} turn${c.turns === 1 ? '' : 's'} · ${fmtDate(c.updated)}</div></div>`;
@@ -327,7 +327,7 @@ function setChatMode(mode) {
   $('#mode-brainstorm').classList.toggle('active', brainstorm);
   $('#mode-chat').setAttribute('aria-pressed', String(!brainstorm));
   $('#mode-brainstorm').setAttribute('aria-pressed', String(brainstorm));
-  chatInput.placeholder = brainstorm ? 'Toss in a spark — let’s riff…' : 'Message Jarvis…';
+  chatInput.placeholder = brainstorm ? 'Toss in a spark — let’s riff…' : 'Message Klaud…';
   if (brainstorm) $('#chat-sub').textContent = 'brainstorm mode — sparks, not essays';
 }
 $('#mode-chat').addEventListener('click', () => setChatMode('chat'));
@@ -568,11 +568,89 @@ document.addEventListener('click', (e) => {
 });
 function openChatMobile() { if (window.innerWidth <= 1200) $('.chat').classList.add('open'); }
 
+// ---- onboarding (first run) ----------------------------------------------
+// Shown when nothing is connected yet and the user hasn't dismissed it.
+// Existing users with a working brain never see it (flag set automatically).
+const obEl = $('#onboarding');
+
+function renderObProviders() {
+  const box = $('#ob-providers');
+  box.innerHTML = '';
+  const list = [...providersById.values()];
+  list.forEach((p) => {
+    const row = el('div', 'ob-row');
+    const status = p.available && p.connected
+      ? '<span class="ob-status ok">connected</span>'
+      : p.available
+        ? '<span class="ob-status">installed, not connected</span>'
+        : '<span class="ob-status">not installed</span>';
+    let action = '';
+    if (!p.available) action = `<button class="ob-btn" data-ob="install" data-id="${esc(p.id)}">Install</button>`;
+    else if (!p.connected) {
+      action = p.canLogin
+        ? `<button class="ob-btn" data-ob="login" data-id="${esc(p.id)}">Connect</button>`
+        : `<span class="ob-hint">${esc(p.loginHint || '')}</span>`;
+    }
+    row.innerHTML = `<span class="ob-name">${esc(p.label)}</span>${status}${action}`;
+    box.appendChild(row);
+  });
+  const ready = list.some((p) => p.available && p.connected);
+  $('#ob-done').disabled = !ready;
+  $('#ob-done').textContent = ready ? 'Start using Klaud' : 'Connect a brain first';
+}
+
+async function obRun(action, id) {
+  const log = $('#ob-log');
+  log.hidden = false;
+  log.textContent = action === 'install' ? 'Installing…\n' : 'Opening your browser to log in…\nFinish there, then come back.\n\n';
+  try {
+    const resp = await fetch(`/api/providers/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
+    if (!resp.ok || !resp.body) throw new Error('server');
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1); if (!line.trim()) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.type === 'text') log.textContent += ev.value;
+        else if (ev.type === 'error') log.textContent += '\n' + ev.message + '\n';
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+  } catch {
+    log.textContent += '\nCould not reach the server.';
+  }
+  await loadProviders();
+  renderObProviders();
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.ob-btn'); if (!b) return;
+  b.disabled = true;
+  obRun(b.dataset.ob, b.dataset.id).finally(() => { b.disabled = false; });
+});
+
+function closeOnboarding() {
+  localStorage.setItem('klaud-onboarded', '1');
+  obEl.hidden = true;
+}
+$('#ob-skip').addEventListener('click', closeOnboarding);
+$('#ob-done').addEventListener('click', closeOnboarding);
+
+function maybeOnboard() {
+  if (localStorage.getItem('klaud-onboarded')) return;
+  const anyConnected = [...providersById.values()].some((p) => p.available && p.connected);
+  if (anyConnected) { localStorage.setItem('klaud-onboarded', '1'); return; }
+  renderObProviders();
+  obEl.hidden = false;
+}
+
 // ---- boot ---------------------------------------------------------------
 function tickClock() { $('#clock').textContent = fmtClock(); }
 tickClock(); setInterval(tickClock, 1000);
 setMode('task');
-loadProviders();
+loadProviders().then(maybeOnboard);
 showView(location.hash.slice(1) || 'overview');
 refresh(); setInterval(refresh, 15000);
 // keep the sidebar workspace count fresh on load
