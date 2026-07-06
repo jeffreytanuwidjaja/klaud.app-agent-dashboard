@@ -61,12 +61,16 @@ npm start                 # → http://localhost:4317
 
 Open the dashboard, add a task, then ask Jarvis *"what's on my plate?"*
 
-**Optional — extra brains** (they appear in the chat dropdown automatically once on PATH):
+**Extra brains — install & connect from inside the app:** the brain dropdown in the chat dock offers *install…* for brains you don't have and *connect…* for ones you haven't logged into — it runs the provider's own browser login for you (Claude's `setup-token` is captured automatically; ChatGPT via `codex login`). No terminal needed. Or by hand:
 
 ```bash
-npm install -g @openai/codex        # ChatGPT — then run `codex` once to log in
+npm install -g @openai/codex        # ChatGPT — then run `codex login`
 npm install -g @google/gemini-cli   # Gemini  — then run `gemini` once to log in
 ```
+
+## Support Klaud
+
+Klaud is **free and open source** — it runs on the AI subscription you already pay for, and your data never leaves your machine. If it earns a place in your day, [a donation](https://github.com/sponsors/jeffreytanuwidjaja) keeps it alive. (The in-app **Support Klaud** button is configurable via `dashboard/config.json` → `donation_url`.)
 
 ## The Store
 

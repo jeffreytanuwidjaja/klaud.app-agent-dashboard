@@ -310,26 +310,136 @@ let chatProvider = 'claude';
 
 // brain selector
 const providerSel = $('#chat-provider');
+const INSTALL_PREFIX = '__install__:';
+const CONNECT_PREFIX = '__connect__:';
+let providersById = new Map();
 async function loadProviders() {
   let list = [];
   try { list = await (await fetch('/api/providers')).json(); } catch { return; }
+  providersById = new Map(list.map((p) => [p.id, p]));
   providerSel.innerHTML = '';
   list.forEach((p) => {
     const o = document.createElement('option');
-    o.value = p.id;
-    o.textContent = p.available ? p.label : `${p.label} — not installed`;
-    o.disabled = !p.available;
+    if (!p.available) { o.value = INSTALL_PREFIX + p.id; o.textContent = `${p.label} — install…`; }
+    else if (!p.connected) { o.value = CONNECT_PREFIX + p.id; o.textContent = `${p.label} — connect…`; }
+    else { o.value = p.id; o.textContent = p.label; }
     providerSel.appendChild(o);
   });
-  const firstOk = list.find((p) => p.available);
-  chatProvider = (list.find((p) => p.id === 'claude' && p.available) || firstOk || { id: 'claude' }).id;
-  providerSel.value = chatProvider;
+  const ready = (pred) => list.find((p) => p.available && p.connected && pred(p));
+  chatProvider = (ready((p) => p.id === 'claude') || ready(() => true) || list.find((p) => p.available) || { id: 'claude' }).id;
+  providerSel.value = providersById.get(chatProvider) && !providersById.get(chatProvider).connected ? CONNECT_PREFIX + chatProvider : chatProvider;
 }
-providerSel.addEventListener('change', () => {
-  chatProvider = providerSel.value;
+providerSel.addEventListener('change', async () => {
+  const v = providerSel.value;
+  if (v.startsWith(INSTALL_PREFIX)) {
+    await installProvider(v.slice(INSTALL_PREFIX.length));
+    return;
+  }
+  if (v.startsWith(CONNECT_PREFIX)) {
+    await connectProvider(v.slice(CONNECT_PREFIX.length));
+    return;
+  }
+  chatProvider = v;
   $('#chat-new').click(); // session semantics differ per brain — start fresh
   $('#chat-sub').textContent = `brain: ${providerSel.selectedOptions[0].textContent}`;
 });
+
+// "Connect your AI": run the brain's own browser-login flow, streaming its
+// output into the chat log; the server captures/saves credentials.
+async function connectProvider(id) {
+  const p = providersById.get(id);
+  if (!p) return loadProviders();
+  if (!p.canLogin) {
+    alert(p.loginHint || `${p.label} has no automated login yet.`);
+    providerSel.value = chatProvider;
+    return;
+  }
+  if (!confirm(`Connect ${p.label}?\n\nA browser window will open — log in with your ${p.label} subscription there, then come back here.`)) {
+    providerSel.value = chatProvider;
+    return;
+  }
+  openChatMobile();
+  const bot = addMsg('bot');
+  bot.wrap.classList.add('installing');
+  bot.bubble.textContent = `Connecting ${p.label}…\nA browser window should open — finish logging in there.\n`;
+  let log = bot.bubble.textContent;
+  try {
+    const resp = await fetch(`/api/providers/${encodeURIComponent(id)}/login`, { method: 'POST' });
+    if (!resp.ok || !resp.body) throw new Error('server');
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
+    let ok = false;
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1); if (!line.trim()) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.type === 'text') { log += ev.value; bot.bubble.textContent = log; scrollChat(); }
+        else if (ev.type === 'error') { log += `\n${ev.message}\n`; bot.bubble.textContent = log; }
+        else if (ev.type === 'end') ok = !!ev.ok;
+      }
+    }
+    log += ok ? `\n${p.label} connected — you're ready to chat.` : `\n${p.label} still isn't connected — check the log above.`;
+    bot.bubble.textContent = log;
+    if (ok) {
+      await loadProviders();
+      chatProvider = id;
+      providerSel.value = id;
+      $('#chat-sub').textContent = `brain: ${p.label}`;
+    }
+  } catch {
+    log += '\nCould not reach the server to connect.';
+    bot.bubble.textContent = log;
+  } finally {
+    bot.wrap.classList.remove('installing');
+  }
+}
+
+// install a not-yet-installed brain (runs its npm install -g in place, streams
+// progress into the chat log) then re-checks availability and switches to it.
+async function installProvider(id) {
+  const p = providersById.get(id);
+  if (!p) return loadProviders();
+  if (!confirm(`Install ${p.label}?\n\nThis runs:\n  ${p.install}\n\non your machine.`)) {
+    providerSel.value = chatProvider; // revert the select back off the install option
+    return;
+  }
+  openChatMobile();
+  const bot = addMsg('bot');
+  bot.wrap.classList.add('installing');
+  bot.bubble.textContent = `Installing ${p.label}…\n$ ${p.install}\n`;
+  let log = bot.bubble.textContent;
+  try {
+    const resp = await fetch(`/api/providers/${encodeURIComponent(id)}/install`, { method: 'POST' });
+    if (!resp.ok || !resp.body) throw new Error('server');
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
+    let ok = false;
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1); if (!line.trim()) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.type === 'text') { log += ev.value; bot.bubble.textContent = log; scrollChat(); }
+        else if (ev.type === 'error') { log += `\n${ev.message}\n`; bot.bubble.textContent = log; }
+        else if (ev.type === 'end') ok = !!ev.ok;
+      }
+    }
+    log += ok ? `\n${p.label} installed.` : `\n${p.label} still isn't available — check the log above.`;
+    bot.bubble.textContent = log;
+    if (ok) {
+      await loadProviders(); // rebuild options now that it's installed
+      chatProvider = id;
+      providerSel.value = id;
+      $('#chat-sub').textContent = `brain: ${providerSel.selectedOptions[0].textContent}`;
+    }
+  } catch {
+    log += '\nCould not reach the server to install.';
+    bot.bubble.textContent = log;
+  } finally {
+    bot.wrap.classList.remove('installing');
+  }
+}
 let attachments = []; // {path, dataUrl}
 const scrollChat = () => { chatLog.scrollTop = chatLog.scrollHeight; };
 
@@ -437,3 +547,8 @@ showView(location.hash.slice(1) || 'overview');
 refresh(); setInterval(refresh, 15000);
 // keep the sidebar workspace count fresh on load
 fetch('/api/workspaces').then((r) => r.json()).then((w) => { $('#nav-ws').textContent = w.length; }).catch(() => {});
+// donation link (configurable via dashboard/config.json donation_url; empty hides it)
+fetch('/api/meta').then((r) => r.json()).then((m) => {
+  const d = $('#donate');
+  if (m.donation_url) d.href = m.donation_url; else d.style.display = 'none';
+}).catch(() => {});

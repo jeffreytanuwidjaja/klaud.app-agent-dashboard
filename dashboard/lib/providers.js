@@ -2,7 +2,12 @@
 // write files can be a Brain (ADR 0004). Claude is first-class (stream-json,
 // resumable sessions); others run in generic text mode: prompt in via stdin,
 // stdout streamed back, stateless per message (continuity via the Store).
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const TOKEN_FILE = path.join(__dirname, '..', '.claude-token');
 
 const PROVIDERS = {
   claude: {
@@ -11,6 +16,10 @@ const PROVIDERS = {
     bin: 'claude',
     mode: 'claude', // stream-json + --resume (handled in chat.js)
     install: 'npm install -g @anthropic-ai/claude-code',
+    // "Connect your AI": setup-token opens a browser OAuth, then prints a
+    // long-lived token — we capture it and write .claude-token automatically.
+    login: { args: ['setup-token'], tokenPattern: /sk-ant-oat01-[A-Za-z0-9_-]+/ },
+    credFiles: [TOKEN_FILE, path.join(os.homedir(), '.claude', '.credentials.json')],
   },
   codex: {
     id: 'codex',
@@ -22,6 +31,8 @@ const PROVIDERS = {
     args: ['exec', '--color', 'never', '--full-auto', '-'],
     lastMessageFlag: '--output-last-message', // clean final answer to a file
     install: 'npm install -g @openai/codex',
+    login: { args: ['login'] }, // opens browser, stores auth itself
+    credFiles: [path.join(os.homedir(), '.codex', 'auth.json')],
   },
   gemini: {
     id: 'gemini',
@@ -30,6 +41,12 @@ const PROVIDERS = {
     mode: 'text',
     args: ['--yolo'], // prompt via stdin; --yolo auto-approves its file tools
     install: 'npm install -g @google/gemini-cli',
+    // No non-interactive login command — first run is interactive.
+    loginHint: 'Run `gemini` once in a terminal and pick "Login with Google".',
+    credFiles: [
+      path.join(os.homedir(), '.gemini', 'oauth_creds.json'),
+      path.join(os.homedir(), '.gemini', 'google_accounts.json'),
+    ],
   },
 };
 
@@ -50,12 +67,28 @@ function available(p) {
   return ok;
 }
 
+// Connected = some credential artifact exists on disk. For claude the token
+// file must actually hold a token, not the placeholder comment.
+function connected(p) {
+  return (p.credFiles || []).some((f) => {
+    try {
+      const t = fs.readFileSync(f, 'utf8').trim();
+      return t.length > 0 && !t.startsWith('#');
+    } catch {
+      return false;
+    }
+  });
+}
+
 function list() {
   return Object.values(PROVIDERS).map((p) => ({
     id: p.id,
     label: p.label,
     mode: p.mode,
     available: available(p),
+    connected: connected(p),
+    canLogin: !!p.login,
+    loginHint: p.loginHint || null,
     install: p.install,
   }));
 }
@@ -64,4 +97,86 @@ function get(id) {
   return PROVIDERS[id] || PROVIDERS.claude;
 }
 
-module.exports = { list, get };
+// Run a not-yet-installed brain's install command (its global npm package),
+// streaming output via `send`. Calls `done(ok)` once the process exits, after
+// invalidating the availability cache so the next check is fresh.
+function install(id, send, done) {
+  const p = PROVIDERS[id];
+  if (!p || !p.install) {
+    send({ type: 'error', message: 'No install command known for this brain.' });
+    return done(false);
+  }
+  const [cmd, ...args] = p.install.split(' ');
+  let child;
+  try {
+    child = spawn(cmd, args, { shell: true, windowsHide: true });
+  } catch (e) {
+    send({ type: 'error', message: e.message });
+    return done(false);
+  }
+  child.stdout.on('data', (d) => send({ type: 'text', value: d.toString() }));
+  child.stderr.on('data', (d) => send({ type: 'text', value: d.toString() }));
+  child.on('error', (e) => send({ type: 'error', message: e.message }));
+  child.on('close', () => {
+    cache.delete(id); // force a fresh --version check next time
+    done(available(p));
+  });
+}
+
+// "Connect your AI": run the provider's own login flow (opens the browser),
+// streaming its output via `send`. For claude, capture the printed token and
+// write it to .claude-token so the user never touches a terminal.
+function login(id, send, done) {
+  const p = PROVIDERS[id];
+  if (!p) {
+    send({ type: 'error', message: 'Unknown brain.' });
+    return done(false);
+  }
+  if (!p.login) {
+    send({ type: 'error', message: p.loginHint || 'This brain has no automated login.' });
+    return done(false);
+  }
+
+  let child;
+  try {
+    child = spawn(p.bin, p.login.args, { shell: true, windowsHide: true });
+  } catch (e) {
+    send({ type: 'error', message: e.message });
+    return done(false);
+  }
+
+  let out = '';
+  const onData = (d) => {
+    const s = d.toString();
+    out += s;
+    // Don't echo a captured token back to the browser.
+    send({ type: 'text', value: p.login.tokenPattern ? s.replace(p.login.tokenPattern, '(token captured)') : s });
+  };
+  child.stdout.on('data', onData);
+  child.stderr.on('data', onData);
+  child.on('error', (e) => send({ type: 'error', message: e.message }));
+
+  // Login flows wait on a browser round-trip — allow up to 5 minutes.
+  const killer = setTimeout(() => {
+    try { child.kill(); } catch { /* noop */ }
+    send({ type: 'error', message: 'Login timed out after 5 minutes.' });
+  }, 300000);
+
+  child.on('close', () => {
+    clearTimeout(killer);
+    if (p.login.tokenPattern) {
+      const m = out.match(p.login.tokenPattern);
+      if (m) {
+        try {
+          fs.writeFileSync(TOKEN_FILE, m[0] + '\n');
+          send({ type: 'text', value: '\nToken saved — Claude is connected.\n' });
+        } catch (e) {
+          send({ type: 'error', message: 'Could not save the token: ' + e.message });
+        }
+      }
+    }
+    done(connected(p));
+  });
+}
+
+module.exports = { list, get, install, login };

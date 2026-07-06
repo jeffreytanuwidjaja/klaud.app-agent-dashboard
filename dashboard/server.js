@@ -51,6 +51,47 @@ app.post('/api/chat', (req, res) => {
 // Available brains (Claude, ChatGPT/Codex, Gemini, …).
 app.get('/api/providers', wrap(() => providers.list()));
 
+// Install a not-yet-installed brain (streams the install command's output).
+app.post('/api/providers/:id/install', (req, res) => {
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  if (res.flushHeaders) res.flushHeaders();
+  const send = (obj) => {
+    try { res.write(JSON.stringify(obj) + '\n'); } catch { /* client gone */ }
+  };
+  providers.install(req.params.id, send, (ok) => {
+    send({ type: 'end', ok });
+    res.end();
+  });
+});
+
+// "Connect your AI" — run the brain's own browser-login flow (streams output).
+app.post('/api/providers/:id/login', (req, res) => {
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  if (res.flushHeaders) res.flushHeaders();
+  const send = (obj) => {
+    try { res.write(JSON.stringify(obj) + '\n'); } catch { /* client gone */ }
+  };
+  providers.login(req.params.id, send, (ok) => {
+    send({ type: 'end', ok });
+    res.end();
+  });
+});
+
+// App meta (donation link, configurable via dashboard/config.json).
+const DONATE_DEFAULT = 'https://github.com/sponsors/jeffreytanuwidjaja';
+app.get('/api/meta', wrap(() => {
+  let donation = DONATE_DEFAULT;
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    if (typeof c.donation_url === 'string') donation = c.donation_url;
+  } catch { /* defaults */ }
+  return { donation_url: donation };
+}));
+
 // Spawn a Project from an Idea, Task, or Workspace folder (spawn + link).
 app.post('/api/projects/spawn', wrap((req) => store.spawnProject(req.body || {})));
 
