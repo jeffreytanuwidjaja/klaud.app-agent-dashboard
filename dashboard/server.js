@@ -45,7 +45,7 @@ app.post('/api/chat', (req, res) => {
   const sessionId = req.body && req.body.sessionId ? String(req.body.sessionId) : null;
   const attachments = (req.body && req.body.attachments) || [];
   if (!message.trim() && !attachments.length) return res.status(400).json({ error: 'Empty message' });
-  chat.runChat(message, sessionId, attachments, res, (req.body && req.body.provider) || 'claude');
+  chat.runChat(message, sessionId, attachments, res, (req.body && req.body.provider) || 'claude', (req.body && req.body.mode) || 'chat');
 });
 
 // Available brains (Claude, ChatGPT/Codex, Gemini, …).

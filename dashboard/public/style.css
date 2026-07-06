@@ -216,6 +216,19 @@ a.nav-item { text-decoration: none; }
 @keyframes blink { 50% { opacity: 0; } }
 
 .composer { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.chat-modes { display: flex; gap: 6px; }
+.mode-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  color: var(--muted); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 13px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.mode-pill svg { width: 13px; height: 13px; }
+.mode-pill:hover { color: var(--text); }
+.mode-pill.active { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+#mode-brainstorm.active { color: var(--amber); border-color: rgba(245, 180, 74, 0.45); background: rgba(245, 180, 74, 0.12); }
 .attach-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .attach-thumb { position: relative; width: 52px; height: 52px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
 .attach-thumb img { width: 100%; height: 100%; object-fit: cover; }

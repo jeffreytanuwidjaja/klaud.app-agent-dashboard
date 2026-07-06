@@ -181,7 +181,18 @@ function runTextChat(provider, message, prompt, sessionId, res, send) {
   });
 }
 
-function runChat(message, sessionId, attachments, res, providerId) {
+// Brainstorm mode: the brain diverges as a sparring partner instead of
+// executing, and ends by capturing confirmed sparks as linked Ideas.
+const BRAINSTORM_PREAMBLE =
+  '[Brainstorm mode] Act as a sharp brainstorming partner, not an executor. ' +
+  'Diverge and riff: offer angles I have not considered, challenge assumptions, ' +
+  'ask at most one probing question per reply, and build on what I say. ' +
+  'Keep replies punchy — sparks, not essays. Do not write code or modify files, ' +
+  'with one exception: when we land on ideas worth keeping, offer to capture them ' +
+  'as Idea files in the Store (per store/README.md, linked to related entities), ' +
+  'and capture exactly the ones I confirm.\n\n';
+
+function runChat(message, sessionId, attachments, res, providerId, mode) {
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -195,7 +206,7 @@ function runChat(message, sessionId, attachments, res, providerId) {
   };
 
   // Fold image attachments into the prompt as file paths for the Read tool.
-  let prompt = message;
+  let prompt = mode === 'brainstorm' ? BRAINSTORM_PREAMBLE + message : message;
   const files = (attachments || []).map((a) => a && a.path).filter(Boolean);
   if (files.length) {
     prompt +=

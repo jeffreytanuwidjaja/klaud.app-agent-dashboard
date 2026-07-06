@@ -83,7 +83,8 @@ function ideaCard(i, archived) {
   const c = el('div', 'card'); const line = firstLine(i.body, false);
   const acts = archived
     ? `<button class="done" data-action="archive" data-id="${esc(i.id)}" data-archived="false" aria-label="Restore '${esc(i.title)}'">${ic('check')}<span>Restore</span></button>${discussBtn('idea', i.id, i.title)}${obsidianBtn(i.file, i.title)}`
-    : `<button class="spawn" data-action="spawn" data-source="idea" data-id="${esc(i.id)}" data-title="${esc(i.title)}" aria-label="Spawn a project from '${esc(i.title)}'">${ic('spark')}<span>Project</span></button>` +
+    : `<button class="spawn" data-action="brainstorm" data-id="${esc(i.id)}" data-title="${esc(i.title)}" aria-label="Brainstorm around '${esc(i.title)}'">${ic('bulb')}<span>Brainstorm</span></button>` +
+      `<button class="spawn" data-action="spawn" data-source="idea" data-id="${esc(i.id)}" data-title="${esc(i.title)}" aria-label="Spawn a project from '${esc(i.title)}'">${ic('spark')}<span>Project</span></button>` +
       discussBtn('idea', i.id, i.title) +
       obsidianBtn(i.file, i.title) +
       `<button class="dismiss" data-action="archive" data-id="${esc(i.id)}" data-archived="true" aria-label="Archive '${esc(i.title)}'">${ic('x')}<span>Archive</span></button>`;
@@ -159,6 +160,16 @@ document.addEventListener('click', (e) => {
   openObsidian(btn.dataset.file);
 });
 $('#open-obsidian').addEventListener('click', () => openObsidian(lastData && lastData.store_path));
+
+// brainstorm around an Idea (fresh session, brainstorm mode, seeded with the file)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action="brainstorm"]'); if (!btn) return;
+  chatSession = null;
+  setChatMode('brainstorm');
+  $('#chat-sub').textContent = `brainstorming: ${btn.dataset.title}`;
+  openChatMobile();
+  sendChat(`Let's brainstorm around my idea "${btn.dataset.title}" (store/ideas/${btn.dataset.id}.md). Read it first, then push it further: variations, adjacent opportunities, what would make it 10x, and the sharpest question I should be asking. End by proposing which new sparks to capture as linked Ideas.`);
+});
 
 // discuss an entity with Jarvis (fresh session, seeded with the file to read)
 const STORE_DIRS = { idea: 'ideas', project: 'projects', task: 'tasks' };
@@ -307,6 +318,20 @@ async function openThread(id) {
 const chatLog = $('#chat-log'), chatInput = $('#chat-input'), chatSend = $('#chat-send');
 let chatSession = null, chatBusy = false;
 let chatProvider = 'claude';
+let chatMode = 'chat'; // 'chat' | 'brainstorm'
+
+function setChatMode(mode) {
+  chatMode = mode;
+  const brainstorm = mode === 'brainstorm';
+  $('#mode-chat').classList.toggle('active', !brainstorm);
+  $('#mode-brainstorm').classList.toggle('active', brainstorm);
+  $('#mode-chat').setAttribute('aria-pressed', String(!brainstorm));
+  $('#mode-brainstorm').setAttribute('aria-pressed', String(brainstorm));
+  chatInput.placeholder = brainstorm ? 'Toss in a spark — let’s riff…' : 'Message Jarvis…';
+  if (brainstorm) $('#chat-sub').textContent = 'brainstorm mode — sparks, not essays';
+}
+$('#mode-chat').addEventListener('click', () => setChatMode('chat'));
+$('#mode-brainstorm').addEventListener('click', () => setChatMode('brainstorm'));
 
 // brain selector
 const providerSel = $('#chat-provider');
@@ -498,7 +523,7 @@ async function sendChat(text) {
   const finishErr = (msg) => { bot.wrap.classList.add('error'); bot.bubble.textContent = msg; };
 
   try {
-    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments, provider: chatProvider }) });
+    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments, provider: chatProvider, mode: chatMode }) });
     if (!resp.ok || !resp.body) throw new Error('server');
     const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
     while (true) {
@@ -533,6 +558,11 @@ $('#chat-new').addEventListener('click', () => {
 });
 document.addEventListener('click', (e) => {
   const s = e.target.closest('.suggest'); if (!s) return;
+  if (s.dataset.brainstorm) {
+    setChatMode('brainstorm');
+    chatInput.focus();
+    return;
+  }
   const t = s.textContent.trim();
   if (t.endsWith('…')) { chatInput.value = t.slice(0, -1); chatInput.focus(); autoGrow(); } else sendChat(t);
 });
