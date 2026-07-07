@@ -253,6 +253,9 @@ a.nav-item { text-decoration: none; }
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   padding: 20px;
 }
+/* The `hidden` attribute must win over the class's display:grid, or the
+   overlay can never be dismissed. */
+.onboarding[hidden] { display: none; }
 .ob-card {
   width: min(580px, 100%); max-height: 92vh; overflow-y: auto; scrollbar-width: thin;
   background: linear-gradient(180deg, #101724, var(--panel-solid));
