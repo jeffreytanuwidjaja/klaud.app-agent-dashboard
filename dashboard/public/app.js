@@ -353,6 +353,12 @@ async function loadProviders() {
   const ready = (pred) => list.find((p) => p.available && p.connected && pred(p));
   chatProvider = (ready((p) => p.id === 'claude') || ready(() => true) || list.find((p) => p.available) || { id: 'claude' }).id;
   providerSel.value = providersById.get(chatProvider) && !providersById.get(chatProvider).connected ? CONNECT_PREFIX + chatProvider : chatProvider;
+  // Self-heal: if a brain is connected, never strand the user on onboarding.
+  if (list.some((p) => p.available && p.connected)) {
+    localStorage.setItem('klaud-onboarded', '1');
+    const ob = document.getElementById('onboarding');
+    if (ob && !ob.hidden) ob.hidden = true;
+  }
 }
 providerSel.addEventListener('change', async () => {
   const v = providerSel.value;
