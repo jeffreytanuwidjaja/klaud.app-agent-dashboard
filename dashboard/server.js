@@ -22,6 +22,13 @@ app.use(
   })
 );
 
+// Never cache API responses — a stale /api/providers (e.g. cached from an
+// older server) would show onboarding to already-connected users.
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 const wrap = (fn) => (req, res) => {
   try {
     res.json(fn(req));

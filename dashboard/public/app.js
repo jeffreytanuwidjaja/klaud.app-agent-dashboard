@@ -102,7 +102,7 @@ function fill(container, items, render, emptyMsg) {
 let lastData = null;
 async function refresh() {
   let data;
-  try { data = await (await fetch('/api/store')).json(); }
+  try { data = await (await fetch('/api/store', { cache: 'no-store' })).json(); }
   catch { $('#status').classList.add('offline'); $('#status-text').textContent = 'offline'; return; }
   lastData = data;
   const openTasks = data.tasks.filter((t) => t.status === 'open').sort((a, b) => (!!b.remind_at - !!a.remind_at) || String(a.remind_at || '~').localeCompare(String(b.remind_at || '~')));
@@ -340,7 +340,7 @@ const CONNECT_PREFIX = '__connect__:';
 let providersById = new Map();
 async function loadProviders() {
   let list = [];
-  try { list = await (await fetch('/api/providers')).json(); } catch { return; }
+  try { list = await (await fetch('/api/providers', { cache: 'no-store' })).json(); } catch { return; }
   providersById = new Map(list.map((p) => [p.id, p]));
   providerSel.innerHTML = '';
   list.forEach((p) => {
@@ -656,7 +656,7 @@ refresh(); setInterval(refresh, 15000);
 // keep the sidebar workspace count fresh on load
 fetch('/api/workspaces').then((r) => r.json()).then((w) => { $('#nav-ws').textContent = w.length; }).catch(() => {});
 // donation link (configurable via dashboard/config.json donation_url; empty hides it)
-fetch('/api/meta').then((r) => r.json()).then((m) => {
+fetch('/api/meta', { cache: 'no-store' }).then((r) => r.json()).then((m) => {
   const d = $('#donate');
   if (m.donation_url) d.href = m.donation_url; else d.style.display = 'none';
 }).catch(() => {});
