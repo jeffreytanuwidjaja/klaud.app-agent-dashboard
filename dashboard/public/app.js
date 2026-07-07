@@ -438,7 +438,7 @@ async function installProvider(id) {
   openChatMobile();
   const bot = addMsg('bot');
   bot.wrap.classList.add('installing');
-  bot.bubble.textContent = `Installing ${p.label}…\n$ ${p.install}\n`;
+  bot.bubble.textContent = `Installing ${p.label}…\n$ ${p.install}\n\nDownloading — this can take a minute. Progress may not show; please wait for the result.\n`;
   let log = bot.bubble.textContent;
   try {
     const resp = await fetch(`/api/providers/${encodeURIComponent(id)}/install`, { method: 'POST' });
@@ -456,13 +456,23 @@ async function installProvider(id) {
         else if (ev.type === 'end') ok = !!ev.ok;
       }
     }
-    log += ok ? `\n${p.label} installed.` : `\n${p.label} still isn't available — check the log above.`;
     bot.bubble.textContent = log;
     if (ok) {
       await loadProviders(); // rebuild options now that it's installed
-      chatProvider = id;
-      providerSel.value = id;
-      $('#chat-sub').textContent = `brain: ${providerSel.selectedOptions[0].textContent}`;
+      const np = providersById.get(id);
+      if (np && np.connected) {
+        chatProvider = id; providerSel.value = id;
+        $('#chat-sub').textContent = `brain: ${np.label}`;
+        bot.bubble.textContent = log + `\n✓ ${np.label} installed and connected — ready to chat.`;
+      } else if (np && np.canLogin) {
+        bot.bubble.textContent = log + `\n✓ ${np.label} installed. Now connecting…`;
+        await connectProvider(id);
+      } else if (np) {
+        const hint = np.loginHint || `Run \`${np.id}\` once in a terminal to log in.`;
+        bot.bubble.textContent = log + `\n✓ ${np.label} installed. One more step to use it:\n${hint}\nThen reload Klaud.`;
+      }
+    } else {
+      bot.bubble.textContent = log + `\n${p.label} didn't install — check the log above.`;
     }
   } catch {
     log += '\nCould not reach the server to install.';
