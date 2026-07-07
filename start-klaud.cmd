@@ -1,7 +1,14 @@
 @echo off
-REM Start the Klaud / Agent OS dashboard. Double-click this file, then open
-REM http://localhost:4317 in your browser. Close this window to stop the server.
+REM Start the Klaud / Agent OS dashboard. Double-click this file; it opens
+REM http://localhost:4317 for you. Close this window to stop the server.
 cd /d "%~dp0dashboard"
+
+REM Free port 4317 first — kill any stale server still running old code,
+REM otherwise the browser loads new files against an outdated backend.
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":4317 " ^| findstr LISTENING') do (
+  echo Stopping a previous Klaud server (PID %%p)...
+  taskkill /PID %%p /F >nul 2>nul
+)
 
 if not exist node_modules (
   echo First run: installing dependencies...
