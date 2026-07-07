@@ -402,10 +402,32 @@ async function connectWithKey(id) {
   }
 }
 
+// Guide a user with a Google AI / Gemini subscription through the one-time
+// terminal OAuth login (Gemini has no in-app OAuth). Their plan is then used.
+function geminiPlanInstructions(p) {
+  openChatMobile();
+  const bot = addMsg('bot');
+  bot.bubble.textContent =
+    `To use your Google AI / Gemini plan (AI Pro, Ultra, or Code Assist):\n\n` +
+    `1. Open a terminal (PowerShell)\n` +
+    `2. Run:  gemini\n` +
+    `3. Choose "Login with Google" and finish in the browser\n` +
+    `4. Reload Klaud — it detects the login and uses your plan's limits.\n\n` +
+    `(No API key needed this way — it rides your subscription, like Claude and ChatGPT.)`;
+}
+
 async function connectProvider(id) {
   const p = providersById.get(id);
   if (!p) return loadProviders();
-  if (!p.canLogin && p.canKey) return connectWithKey(id);
+  if (!p.canLogin && p.canKey) {
+    const usePlan = window.confirm(
+      `Connect ${p.label} — choose how:\n\n` +
+        `• OK — I have a Google AI / Gemini plan → log in with Google (uses your subscription)\n` +
+        `• Cancel — paste a free API key instead`
+    );
+    if (usePlan) { geminiPlanInstructions(p); providerSel.value = chatProvider; return; }
+    return connectWithKey(id);
+  }
   if (!p.canLogin) {
     alert(p.loginHint || `${p.label} has no automated login yet.`);
     providerSel.value = chatProvider;
@@ -632,7 +654,7 @@ function renderObProviders() {
       action = p.canLogin
         ? `<button class="ob-btn" data-ob="login" data-id="${esc(p.id)}">Connect</button>`
         : p.canKey
-          ? `<button class="ob-btn" data-ob="key" data-id="${esc(p.id)}">Add key</button>`
+          ? `<button class="ob-btn" data-ob="connect" data-id="${esc(p.id)}">Connect</button>`
           : `<span class="ob-hint">${esc(p.loginHint || '')}</span>`;
     }
     row.innerHTML = `<span class="ob-name">${esc(p.label)}</span>${status}${action}`;
@@ -673,7 +695,7 @@ document.addEventListener('click', async (e) => {
   const b = e.target.closest('.ob-btn'); if (!b) return;
   b.disabled = true;
   try {
-    if (b.dataset.ob === 'key') { await connectWithKey(b.dataset.id); renderObProviders(); }
+    if (b.dataset.ob === 'connect') { await connectProvider(b.dataset.id); renderObProviders(); }
     else await obRun(b.dataset.ob, b.dataset.id);
   } finally { b.disabled = false; }
 });

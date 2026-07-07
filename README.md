@@ -76,7 +76,7 @@ npm install -g @google/gemini-cli   # Gemini  — connect in-app with a free API
 Connecting each brain is done from the dashboard's chat dropdown:
 - **Claude** — captures a `setup-token` automatically
 - **ChatGPT (Codex)** — runs `codex login` (browser)
-- **Gemini** — paste a free [Google AI Studio API key](https://aistudio.google.com/apikey) (Gemini's CLI has no in-app OAuth; the key path is the frictionless option)
+- **Gemini** — two options: **(a)** paste a free [Google AI Studio API key](https://aistudio.google.com/apikey), or **(b)** if you have a **Google AI Pro/Ultra or Code Assist plan**, run `gemini` once in a terminal and pick "Login with Google" — Klaud detects it and uses your plan's limits (Gemini's CLI has no in-app OAuth, so the subscription path is a one-time terminal step)
 
 ## Support Klaud
 
