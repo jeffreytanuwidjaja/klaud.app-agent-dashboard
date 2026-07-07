@@ -88,6 +88,9 @@ app.post('/api/providers/:id/login', (req, res) => {
   });
 });
 
+// Save an API key for a brain that connects via key (Gemini).
+app.post('/api/providers/:id/key', wrap((req) => providers.saveKey(req.params.id, req.body && req.body.key)));
+
 // App meta (donation link, configurable via dashboard/config.json).
 const DONATE_DEFAULT = 'https://github.com/sponsors/jeffreytanuwidjaja';
 app.get('/api/meta', wrap(() => {

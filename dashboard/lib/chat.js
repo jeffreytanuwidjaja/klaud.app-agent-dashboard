@@ -123,9 +123,20 @@ function runTextChat(provider, message, prompt, sessionId, res, send) {
     args.splice(args.length - 1, 0, provider.lastMessageFlag, lastFile);
   }
 
+  // Per-provider env plus any API key from its key file (e.g. GEMINI_API_KEY).
+  const env = { ...process.env, ...(provider.env || {}) };
+  if (provider.keyLogin) {
+    try {
+      const k = fs.readFileSync(provider.keyLogin.file, 'utf8').trim();
+      if (k && !k.startsWith('#')) env[provider.keyLogin.envVar] = k;
+    } catch {
+      /* no key yet */
+    }
+  }
+
   let child;
   try {
-    child = spawn(provider.bin, args, { cwd: ROOT, windowsHide: true, shell: true });
+    child = spawn(provider.bin, args, { cwd: ROOT, windowsHide: true, shell: true, env });
   } catch (e) {
     send({ type: 'error', error: 'spawn_failed', message: e.message });
     return res.end();

@@ -1,5 +1,6 @@
 # --- secrets: NEVER commit ---
 dashboard/.claude-token
+dashboard/.gemini-key
 
 # --- personal data: your Store is yours, not the app's ---
 store/ideas/*

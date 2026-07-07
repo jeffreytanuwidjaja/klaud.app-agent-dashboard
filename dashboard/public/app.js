@@ -377,9 +377,35 @@ providerSel.addEventListener('change', async () => {
 
 // "Connect your AI": run the brain's own browser-login flow, streaming its
 // output into the chat log; the server captures/saves credentials.
+// Connect a brain that authenticates with an API key (Gemini): prompt, save, reload.
+async function connectWithKey(id) {
+  const p = providersById.get(id);
+  const key = window.prompt(
+    `Paste your ${p.label} API key.\n\nGet a free one here:\n${p.keyUrl}\n\nKlaud stores it locally and only sends it to ${p.label}.`
+  );
+  if (key === null) { providerSel.value = chatProvider; return false; }
+  try {
+    const r = await (await fetch(`/api/providers/${encodeURIComponent(id)}/key`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }),
+    })).json();
+    if (r.error) throw new Error(r.error);
+    await loadProviders();
+    if (providersById.get(id) && providersById.get(id).connected) {
+      chatProvider = id; providerSel.value = id;
+      $('#chat-sub').textContent = `brain: ${p.label}`;
+    }
+    return true;
+  } catch (e) {
+    alert('Could not save the key: ' + e.message);
+    providerSel.value = chatProvider;
+    return false;
+  }
+}
+
 async function connectProvider(id) {
   const p = providersById.get(id);
   if (!p) return loadProviders();
+  if (!p.canLogin && p.canKey) return connectWithKey(id);
   if (!p.canLogin) {
     alert(p.loginHint || `${p.label} has no automated login yet.`);
     providerSel.value = chatProvider;
@@ -464,7 +490,7 @@ async function installProvider(id) {
         chatProvider = id; providerSel.value = id;
         $('#chat-sub').textContent = `brain: ${np.label}`;
         bot.bubble.textContent = log + `\n✓ ${np.label} installed and connected — ready to chat.`;
-      } else if (np && np.canLogin) {
+      } else if (np && (np.canLogin || np.canKey)) {
         bot.bubble.textContent = log + `\n✓ ${np.label} installed. Now connecting…`;
         await connectProvider(id);
       } else if (np) {
@@ -605,7 +631,9 @@ function renderObProviders() {
     else if (!p.connected) {
       action = p.canLogin
         ? `<button class="ob-btn" data-ob="login" data-id="${esc(p.id)}">Connect</button>`
-        : `<span class="ob-hint">${esc(p.loginHint || '')}</span>`;
+        : p.canKey
+          ? `<button class="ob-btn" data-ob="key" data-id="${esc(p.id)}">Add key</button>`
+          : `<span class="ob-hint">${esc(p.loginHint || '')}</span>`;
     }
     row.innerHTML = `<span class="ob-name">${esc(p.label)}</span>${status}${action}`;
     box.appendChild(row);
@@ -641,10 +669,13 @@ async function obRun(action, id) {
   renderObProviders();
 }
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   const b = e.target.closest('.ob-btn'); if (!b) return;
   b.disabled = true;
-  obRun(b.dataset.ob, b.dataset.id).finally(() => { b.disabled = false; });
+  try {
+    if (b.dataset.ob === 'key') { await connectWithKey(b.dataset.id); renderObProviders(); }
+    else await obRun(b.dataset.ob, b.dataset.id);
+  } finally { b.disabled = false; }
 });
 
 function closeOnboarding() {

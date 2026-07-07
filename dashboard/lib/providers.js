@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 
 const TOKEN_FILE = path.join(__dirname, '..', '.claude-token');
+const GEMINI_KEY_FILE = path.join(__dirname, '..', '.gemini-key');
 
 const PROVIDERS = {
   claude: {
@@ -38,12 +39,22 @@ const PROVIDERS = {
     id: 'gemini',
     label: 'Gemini',
     bin: 'gemini',
+    // prompt via stdin; --yolo auto-approves file tools; --skip-trust is
+    // required to run headless outside an interactively-trusted folder.
     mode: 'text',
-    args: ['--yolo'], // prompt via stdin; --yolo auto-approves its file tools
+    args: ['--yolo', '--skip-trust'],
     install: 'npm install -g @google/gemini-cli',
-    // No non-interactive login command — first run is interactive.
-    loginHint: 'Run `gemini` once in a terminal and pick "Login with Google".',
+    // No non-interactive OAuth, but Gemini honours a GEMINI_API_KEY — a free
+    // key from Google AI Studio — so users can connect in-app by pasting it.
+    keyLogin: {
+      envVar: 'GEMINI_API_KEY',
+      file: GEMINI_KEY_FILE,
+      url: 'https://aistudio.google.com/apikey',
+      pattern: /^AIza[A-Za-z0-9_-]{20,}$/,
+    },
+    loginHint: 'Paste a free Google AI Studio API key, or run `gemini` once in a terminal to log in.',
     credFiles: [
+      GEMINI_KEY_FILE,
       path.join(os.homedir(), '.gemini', 'oauth_creds.json'),
       path.join(os.homedir(), '.gemini', 'google_accounts.json'),
     ],
@@ -88,9 +99,25 @@ function list() {
     available: available(p),
     connected: connected(p),
     canLogin: !!p.login,
+    canKey: !!p.keyLogin,
+    keyUrl: p.keyLogin ? p.keyLogin.url : null,
     loginHint: p.loginHint || null,
     install: p.install,
   }));
+}
+
+// Save an API key (e.g. Gemini's GEMINI_API_KEY) to the provider's key file.
+function saveKey(id, key) {
+  const p = PROVIDERS[id];
+  if (!p || !p.keyLogin) throw new Error('This brain does not use an API key.');
+  const k = (key || '').trim();
+  if (!k) throw new Error('An API key is required.');
+  if (p.keyLogin.pattern && !p.keyLogin.pattern.test(k)) {
+    throw new Error('That does not look like a valid key.');
+  }
+  fs.writeFileSync(p.keyLogin.file, k + '\n');
+  cache.delete(id);
+  return { ok: true, connected: connected(p) };
 }
 
 function get(id) {
@@ -179,4 +206,4 @@ function login(id, send, done) {
   });
 }
 
-module.exports = { list, get, install, login };
+module.exports = { list, get, install, login, saveKey };

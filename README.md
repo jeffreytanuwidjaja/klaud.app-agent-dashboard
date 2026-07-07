@@ -69,9 +69,14 @@ Open the dashboard, add a task, then ask Jarvis *"what's on my plate?"*
 **Extra brains — install & connect from inside the app:** the brain dropdown in the chat dock offers *install…* for brains you don't have and *connect…* for ones you haven't logged into — it runs the provider's own browser login for you (Claude's `setup-token` is captured automatically; ChatGPT via `codex login`). No terminal needed. Or by hand:
 
 ```bash
-npm install -g @openai/codex        # ChatGPT — then run `codex login`
-npm install -g @google/gemini-cli   # Gemini  — then run `gemini` once to log in
+npm install -g @openai/codex        # ChatGPT — connect in-app (runs `codex login`)
+npm install -g @google/gemini-cli   # Gemini  — connect in-app with a free API key
 ```
+
+Connecting each brain is done from the dashboard's chat dropdown:
+- **Claude** — captures a `setup-token` automatically
+- **ChatGPT (Codex)** — runs `codex login` (browser)
+- **Gemini** — paste a free [Google AI Studio API key](https://aistudio.google.com/apikey) (Gemini's CLI has no in-app OAuth; the key path is the frictionless option)
 
 ## Support Klaud
 
