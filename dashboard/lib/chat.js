@@ -110,7 +110,7 @@ const stripAnsi = (s) => s.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1b\
 // Generic text-mode brain (Codex, Gemini, …): prompt in via stdin, stdout
 // streamed back as text. Stateless per message — the Store carries continuity
 // (their protocol files: AGENTS.md / GEMINI.md). sessionId is only a history key.
-function runTextChat(provider, message, prompt, sessionId, res, send) {
+function runTextChat(provider, message, prompt, sessionId, res, send, model) {
   const id = sessionId || `${provider.id}-${Date.now()}`;
   send({ type: 'session', id, resumable: false });
 
@@ -118,6 +118,12 @@ function runTextChat(provider, message, prompt, sessionId, res, send) {
   // stdout stream becomes progress, replaced by the final message at the end.
   let lastFile = null;
   const args = [...(provider.args || [])];
+  if (model) {
+    // Insert before a trailing '-' stdin marker (codex), else append (gemini).
+    const flag = ['--model', model];
+    if (args[args.length - 1] === '-') args.splice(args.length - 1, 0, ...flag);
+    else args.push(...flag);
+  }
   if (provider.lastMessageFlag) {
     lastFile = path.join(require('os').tmpdir(), `agentos-${provider.id}-${Date.now()}.txt`);
     args.splice(args.length - 1, 0, provider.lastMessageFlag, lastFile);
@@ -203,7 +209,7 @@ const BRAINSTORM_PREAMBLE =
   'as Idea files in the Store (per store/README.md, linked to related entities), ' +
   'and capture exactly the ones I confirm.\n\n';
 
-function runChat(message, sessionId, attachments, res, providerId, mode) {
+function runChat(message, sessionId, attachments, res, providerId, mode, model) {
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -229,10 +235,11 @@ function runChat(message, sessionId, attachments, res, providerId, mode) {
   }
 
   const provider = providers.get(providerId);
-  if (provider.mode === 'text') return runTextChat(provider, message, prompt, sessionId, res, send);
+  if (provider.mode === 'text') return runTextChat(provider, message, prompt, sessionId, res, send, model);
 
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits'];
   if (sessionId) args.push('--resume', sessionId);
+  if (model) args.push('--model', model);
   const dirs = extraDirs();
   if (dirs.length) args.push('--add-dir', ...dirs); // variadic; stops at next flag
   args.push('--allowedTools', ...ALLOWED); // variadic — keep last

@@ -6,6 +6,16 @@ const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const config = require('./config');
+
+// Curated model choices per brain (first is always "Default" = no flag, uses
+// the CLI's own default). Overridable per provider via config.json → models.
+const DEFAULT = { id: '', label: 'Default' };
+const MODELS = {
+  claude: [DEFAULT, { id: 'opus', label: 'Opus' }, { id: 'sonnet', label: 'Sonnet' }, { id: 'haiku', label: 'Haiku' }],
+  codex: [DEFAULT, { id: 'gpt-5.1', label: 'GPT-5.1' }, { id: 'gpt-5.1-codex', label: 'GPT-5.1 Codex' }, { id: 'gpt-5.1-codex-mini', label: 'Codex Mini' }],
+  gemini: [DEFAULT, { id: 'gemini-2.5-flash', label: '2.5 Flash' }, { id: 'gemini-2.5-pro', label: '2.5 Pro' }],
+};
 
 const TOKEN_FILE = path.join(__dirname, '..', '.claude-token');
 const GEMINI_KEY_FILE = path.join(__dirname, '..', '.gemini-key');
@@ -103,6 +113,7 @@ function list() {
     keyUrl: p.keyLogin ? p.keyLogin.url : null,
     loginHint: p.loginHint || null,
     install: p.install,
+    models: config.getModels(p.id) || MODELS[p.id] || [DEFAULT],
   }));
 }
 

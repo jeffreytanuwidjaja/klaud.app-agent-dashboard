@@ -21,7 +21,7 @@ Chat assistants forget. Notes apps don't think. Klaud splits the difference:
 - 🗂 **One board** — Tasks, Projects, and Ideas in a single dark command-center view, with quick capture
 - 💬 **Jarvis chat dock** — talk to a headless Claude Code session that reads/writes your Store live; streamed replies, tool activity chips, resumable threads
 - 💡 **Brainstorm mode** — flip the chat into a diverging sparring partner: it riffs, challenges, asks sharp questions, and captures the sparks you confirm as linked Ideas in your Store (works per idea card too)
-- 🧠 **Multi-LLM brains** — pick the model per conversation: Claude (first-class), ChatGPT via Codex CLI, or Gemini CLI; all follow the same Store protocol (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), so memory survives a brain swap
+- 🧠 **Multi-LLM brains + model choice** — pick the brain *and* the model per conversation: Claude (Opus / Sonnet / Haiku), ChatGPT via Codex CLI, or Gemini CLI (2.5 Flash / Pro); all follow the same Store protocol (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), so memory survives a brain swap. Model lists are overridable in `config.json`
 - ⏰ **Reminders** — a task with a `remind_at` fires a native Windows toast; the dashboard server is the always-on scheduler
 - 🌱 **Ideas spawn Projects** — one click turns an idea into a linked project (idea stays put — provenance is permanent) and drops you into an AI planning chat
 - 🔎 **Cross-workspace context** — register your other repos/vaults as Workspaces; the brain reads across all of them. Promote a workspace folder into a Project in one click (opens a planning chat that explores the folder), or link it to an existing Project — the relationship is two-way and optional

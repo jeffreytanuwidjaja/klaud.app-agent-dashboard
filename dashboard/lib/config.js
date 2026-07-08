@@ -56,4 +56,11 @@ function workspaceDirs(projectWorkspaces = []) {
   });
 }
 
-module.exports = { getWorkspaces, addWorkspace, removeWorkspace, workspaceDirs };
+// Optional per-provider model list override, e.g. in config.json:
+//   { "models": { "codex": [{ "id": "", "label": "Default" }, ...] } }
+function getModels(providerId) {
+  const c = load();
+  return c.models && Array.isArray(c.models[providerId]) ? c.models[providerId] : null;
+}
+
+module.exports = { getWorkspaces, addWorkspace, removeWorkspace, workspaceDirs, getModels };

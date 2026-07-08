@@ -333,8 +333,26 @@ function setChatMode(mode) {
 $('#mode-chat').addEventListener('click', () => setChatMode('chat'));
 $('#mode-brainstorm').addEventListener('click', () => setChatMode('brainstorm'));
 
-// brain selector
+// brain + model selectors
 const providerSel = $('#chat-provider');
+const modelSel = $('#chat-model');
+let chatModel = ''; // '' = provider default
+
+function updateModelOptions(providerId) {
+  const p = providersById.get(providerId);
+  const models = (p && p.models) || [{ id: '', label: 'Default' }];
+  modelSel.innerHTML = '';
+  models.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m.id; o.textContent = m.label;
+    modelSel.appendChild(o);
+  });
+  // keep current selection if still available, else default
+  chatModel = models.some((m) => m.id === chatModel) ? chatModel : '';
+  modelSel.value = chatModel;
+  modelSel.style.display = models.length > 1 ? '' : 'none';
+}
+modelSel.addEventListener('change', () => { chatModel = modelSel.value; });
 const INSTALL_PREFIX = '__install__:';
 const CONNECT_PREFIX = '__connect__:';
 let providersById = new Map();
@@ -353,6 +371,7 @@ async function loadProviders() {
   const ready = (pred) => list.find((p) => p.available && p.connected && pred(p));
   chatProvider = (ready((p) => p.id === 'claude') || ready(() => true) || list.find((p) => p.available) || { id: 'claude' }).id;
   providerSel.value = providersById.get(chatProvider) && !providersById.get(chatProvider).connected ? CONNECT_PREFIX + chatProvider : chatProvider;
+  updateModelOptions(chatProvider);
   // Self-heal: if a brain is connected, never strand the user on onboarding.
   if (list.some((p) => p.available && p.connected)) {
     localStorage.setItem('klaud-onboarded', '1');
@@ -371,6 +390,7 @@ providerSel.addEventListener('change', async () => {
     return;
   }
   chatProvider = v;
+  updateModelOptions(v);
   $('#chat-new').click(); // session semantics differ per brain — start fresh
   $('#chat-sub').textContent = `brain: ${providerSel.selectedOptions[0].textContent}`;
 });
@@ -587,7 +607,7 @@ async function sendChat(text) {
   const finishErr = (msg) => { bot.wrap.classList.add('error'); bot.bubble.textContent = msg; };
 
   try {
-    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments, provider: chatProvider, mode: chatMode }) });
+    const resp = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId: chatSession, attachments: sentAttachments, provider: chatProvider, mode: chatMode, model: chatModel }) });
     if (!resp.ok || !resp.body) throw new Error('server');
     const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
     while (true) {
