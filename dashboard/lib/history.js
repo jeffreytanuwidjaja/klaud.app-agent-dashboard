@@ -14,7 +14,7 @@ function ensure() {
 }
 const file = (id) => path.join(DIR, String(id).replace(/[^\w-]/g, '') + '.json');
 
-function append(id, userText, botText, tools) {
+function append(id, userText, botText, tools, meta = {}) {
   if (!id) return;
   ensure();
   let t;
@@ -24,7 +24,7 @@ function append(id, userText, botText, tools) {
     t = { id, created: Date.now(), messages: [] };
   }
   t.messages.push({ role: 'user', text: userText, ts: Date.now() });
-  t.messages.push({ role: 'bot', text: botText || '', tools: tools || [], ts: Date.now() });
+  t.messages.push({ role: 'bot', text: botText || '', tools: tools || [], provider: meta.provider || null, model: meta.model || '', ts: Date.now() });
   t.updated = Date.now();
   fs.writeFileSync(file(id), JSON.stringify(t, null, 2));
 }

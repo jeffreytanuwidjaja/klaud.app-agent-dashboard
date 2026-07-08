@@ -181,7 +181,7 @@ function runTextChat(provider, message, prompt, sessionId, res, send, model) {
       send({ type: 'error', error: 'provider_error', message: `${provider.label} exited with code ${code}. Is it installed and logged in? (${provider.install})` });
     }
     try {
-      history.append(id, message, finalText, [provider.label]);
+      history.append(id, message, finalText, [provider.label], { provider: provider.id, model });
     } catch {
       /* best-effort */
     }
@@ -283,7 +283,7 @@ function runChat(message, sessionId, attachments, res, providerId, mode, model) 
   child.on('close', () => {
     if (buf.trim()) handleLine(buf, send, acc);
     try {
-      history.append(acc.sessionId, message, acc.text, [...acc.tools]);
+      history.append(acc.sessionId, message, acc.text, [...acc.tools], { provider: providerId, model });
     } catch {
       /* history best-effort */
     }

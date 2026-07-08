@@ -308,6 +308,7 @@ async function openThread(id) {
     const b = addMsg(m.role === 'user' ? 'user' : 'bot');
     b.bubble.textContent = m.text || (m.role === 'bot' ? '(no reply)' : '');
     if (m.tools && m.tools.length) m.tools.forEach((t) => b.tools.insertAdjacentHTML('beforeend', toolChip(t)));
+    if (m.role === 'bot' && (m.provider || m.model)) b.wrap.insertAdjacentHTML('beforeend', modelTag(m.provider, m.model));
   });
   location.hash = 'overview'; // bring board back; chat dock shows the thread
   openChatMobile();
@@ -560,6 +561,16 @@ function addMsg(role) {
 }
 const toolChip = (name) => `<span class="tool-chip">${ic('spark')}${esc(name)}</span>`;
 
+// "Claude · Haiku" tag under a bot reply, from provider id + model id.
+function modelTag(providerId, modelId) {
+  const p = providersById.get(providerId);
+  const plabel = p ? p.label : providerId || '';
+  let ml = '';
+  if (modelId && p && p.models) { const m = p.models.find((x) => x.id === modelId); ml = m ? m.label : modelId; }
+  const txt = plabel + (ml ? ` · ${ml}` : '');
+  return txt ? `<div class="msg-model">${esc(txt)}</div>` : '';
+}
+
 function renderAttachments() {
   const row = $('#attach-row'); row.hidden = attachments.length === 0; row.innerHTML = '';
   attachments.forEach((a, i) => {
@@ -603,6 +614,7 @@ async function sendChat(text) {
   attachments = []; renderAttachments();
 
   const bot = addMsg('bot'); bot.bubble.innerHTML = '<span class="caret"></span>';
+  const sentProvider = chatProvider, sentModel = chatModel;
   let acc = ''; const seen = new Set();
   const finishErr = (msg) => { bot.wrap.classList.add('error'); bot.bubble.textContent = msg; };
 
@@ -628,7 +640,10 @@ async function sendChat(text) {
     }
   } catch { finishErr('Could not reach the brain. Is the server running?'); }
   finally {
-    if (!bot.wrap.classList.contains('error')) bot.bubble.innerHTML = esc(acc) || '(no reply)';
+    if (!bot.wrap.classList.contains('error')) {
+      bot.bubble.innerHTML = esc(acc) || '(no reply)';
+      bot.wrap.insertAdjacentHTML('beforeend', modelTag(sentProvider, sentModel));
+    }
     chatBusy = false; chatSend.disabled = false; chatInput.focus(); refresh();
   }
 }
