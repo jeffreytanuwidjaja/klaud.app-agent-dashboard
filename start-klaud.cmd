@@ -6,7 +6,7 @@ cd /d "%~dp0dashboard"
 REM Free port 4317 first — kill any stale server still running old code,
 REM otherwise the browser loads new files against an outdated backend.
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":4317 " ^| findstr LISTENING') do (
-  echo Stopping a previous Klaud server (PID %%p)...
+  echo Stopping a previous Klaud server, PID %%p ...
   taskkill /PID %%p /F >nul 2>nul
 )
 
